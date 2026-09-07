@@ -7,7 +7,7 @@
 
 v2 proved the shape (signed JSON on IPFS, one TXT pointer). v3 changes **where authority comes from** and **what an agent needs to be usable**:
 
-1. **Trust root = AGT Registry v2**, not Freename's contract. Verification checks `signer == manifest.owner == AGTRegistry.ownerOf(tokenId)`.
+1. **Trust root = AGT Registry v2**, not the upstream registry vendor's contract. Verification checks `signer == manifest.owner == AGTRegistry.ownerOf(tokenId)`.
 2. **The pointer lives on-chain** (`AGTRegistry.manifestOf(tokenId)`); DNS TXT `agt-manifest=` becomes a projection of it.
 3. **Agent-first fields**: signing keys (so agents can authenticate requests), typed endpoints (MCP/A2A/HTTP/WS), payment rails, delegation (agent acts for a principal), and interop registrations (e.g. ERC-8004).
 
