@@ -110,24 +110,49 @@ export function verifyManifest(m: AgtManifest, onchainOwner?: string | null): Ve
   return { verified: reasons.length === 0, signer, reasons };
 }
 
-/** Fetch a manifest URI: ipfs:// (via gateway), https://, or data: (base64 or utf8). */
-export async function fetchManifest(uri: string, opts: { ipfsGateway?: string; timeoutMs?: number } = {}): Promise<AgtManifest> {
+export const DEFAULT_MAX_MANIFEST_BYTES = 256 * 1024;
+
+/** Fetch the raw bytes of a manifest URI: ipfs:// (via gateway), https://, or data: (base64 or utf8). Enforces a size cap. */
+export async function fetchManifestBytes(
+  uri: string,
+  opts: { ipfsGateway?: string; timeoutMs?: number; maxBytes?: number } = {}
+): Promise<Uint8Array> {
+  const max = opts.maxBytes ?? DEFAULT_MAX_MANIFEST_BYTES;
   const gateway = (opts.ipfsGateway ?? "https://dweb.link/ipfs/").replace(/\/?$/, "/");
   if (uri.startsWith("data:")) {
     const comma = uri.indexOf(",");
+    if (comma < 0) throw new Error("malformed data: URI");
     const meta = uri.slice(5, comma);
     const payload = uri.slice(comma + 1);
-    const text = /;base64/i.test(meta) ? Buffer.from(payload, "base64").toString("utf8") : decodeURIComponent(payload);
-    return JSON.parse(text);
+    const bytes = /;base64/i.test(meta) ? new Uint8Array(Buffer.from(payload, "base64")) : new TextEncoder().encode(decodeURIComponent(payload));
+    if (bytes.length > max) throw new Error(`manifest exceeds ${max} bytes`);
+    return bytes;
   }
+  if (!uri.startsWith("ipfs://") && !uri.startsWith("https://")) throw new Error(`unsupported manifest URI scheme: ${uri.split(":")[0]}`);
   const url = uri.startsWith("ipfs://") ? gateway + uri.slice(7).replace(/^ipfs\//, "") : uri;
   const c = new AbortController();
   const t = setTimeout(() => c.abort(), opts.timeoutMs ?? 10_000);
   try {
-    const r = await fetch(url, { signal: c.signal, headers: { accept: "application/json" } });
+    const r = await fetch(url, { signal: c.signal, headers: { accept: "application/json" }, redirect: "follow" });
     if (!r.ok) throw new Error(`fetch ${url} → HTTP ${r.status}`);
-    return (await r.json()) as AgtManifest;
+    const len = Number(r.headers.get("content-length") ?? 0);
+    if (len > max) throw new Error(`manifest exceeds ${max} bytes`);
+    const buf = new Uint8Array(await r.arrayBuffer());
+    if (buf.length > max) throw new Error(`manifest exceeds ${max} bytes`);
+    return buf;
   } finally {
     clearTimeout(t);
   }
+}
+
+export function parseManifest(bytes: Uint8Array): AgtManifest {
+  const text = new TextDecoder().decode(bytes);
+  const m = JSON.parse(text);
+  if (!m || typeof m !== "object" || Array.isArray(m)) throw new Error("manifest is not a JSON object");
+  return m as AgtManifest;
+}
+
+/** Fetch + parse a manifest URI (see fetchManifestBytes). */
+export async function fetchManifest(uri: string, opts: { ipfsGateway?: string; timeoutMs?: number; maxBytes?: number } = {}): Promise<AgtManifest> {
+  return parseManifest(await fetchManifestBytes(uri, opts));
 }
