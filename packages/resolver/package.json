@@ -1,0 +1,24 @@
+{
+  "name": "@agt/resolver",
+  "version": "0.2.0-testbed",
+  "description": "Resolve and verify .agt agent names against AGT Registry v2 (raw JSON-RPC, no wallet library needed)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" } },
+  "bin": { "agt-resolve": "./dist/cli.js" },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test dist/*.test.js"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "license": "MIT"
+}

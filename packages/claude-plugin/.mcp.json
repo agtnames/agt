@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "agt": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/../mcp/dist/index.js"],
+      "env": {
+        "AGT_RPC_URL": "${AGT_RPC_URL}",
+        "AGT_REGISTRY": "${AGT_REGISTRY}",
+        "AGT_IPFS_GATEWAY": "${AGT_IPFS_GATEWAY:-https://dweb.link/ipfs/}"
+      }
+    }
+  }
+}
