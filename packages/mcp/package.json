@@ -1,14 +1,16 @@
 {
   "name": "@agt/mcp",
-  "version": "0.1.0-testbed",
-  "description": "MCP server exposing .agt name resolution, manifest verification and discovery to any MCP-compatible client (Claude Code, Cursor, custom agents)",
+  "version": "0.2.0",
+  "description": "MCP server for .agt agent names: resolve, verify and discover agents by name against AGT Registry v2. Works with any MCP-compatible client (Claude Code, Cursor, custom agents).",
   "type": "module",
   "bin": { "agt-mcp": "./dist/index.js" },
   "main": "./dist/index.js",
-  "files": ["dist"],
+  "files": ["dist", "README.md"],
+  "engines": { "node": ">=20" },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "@agt/resolver": "file:../resolver",
@@ -19,5 +21,6 @@
     "@types/node": "^22.0.0",
     "typescript": "^5.6.0"
   },
+  "keywords": ["mcp", "agt", "agent-identity", "naming", "claude-code"],
   "license": "MIT"
 }
