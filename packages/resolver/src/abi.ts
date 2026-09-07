@@ -38,7 +38,7 @@ export function decString(hex: string): string {
 
 /** ENS namehash. `namehash("exampleagent.agt")` == AGTRegistry.nodeOf("exampleagent"). */
 export function namehash(name: string): string {
-  let node = new Uint8Array(32);
+  let node: Uint8Array = new Uint8Array(32);
   if (name) {
     const labels = name.toLowerCase().replace(/\.$/, "").split(".");
     for (let i = labels.length - 1; i >= 0; i--) {
