@@ -1,0 +1,14 @@
+# Normalize line endings: LF in the repo and on every checkout. Found the hard way on 2026-09-09 — a Windows
+# checkout produced CRLF files, and vitest's transform of an imported .mjs failed with "Invalid or unexpected
+# token" while the identical LF files passed locally and in Linux CI.
+* text=auto eol=lf
+
+# Binary assets — never rewrite
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
