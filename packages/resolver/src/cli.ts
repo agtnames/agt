@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * agt-resolve — CLI over @agt/resolver.
+ * agt-resolve — CLI over @agtnames/resolver.
  *   agt-resolve resolve   exampleagent.agt [--chain polygon|amoy|localhost] [--rpc URL] [--registry 0x…] [--legacy]
  *   agt-resolve record    exampleagent.agt …          on-chain record only (owner, expiry, resolver, records)
  *   agt-resolve available foo.agt …

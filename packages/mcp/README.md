@@ -1,4 +1,4 @@
-# @agt/mcp
+# @agtnames/mcp
 
 MCP server for `.agt` agent names. Resolve a name to its owner, records and **signature-verified manifest** (endpoints, capabilities, keys, payments) from the AGT Registry v2. Read-only. Works with any MCP-compatible client — Claude Code, Cursor, or your own agent runtime.
 
@@ -27,7 +27,7 @@ AGT_IPFS_GATEWAY=https://dweb.link/ipfs/   # must be allow-listed
 ## Claude Code
 
 ```
-claude mcp add agt -e AGT_CHAIN=polygon -e AGT_REGISTRY=0x… -- npx -y @agt/mcp
+claude mcp add agt -e AGT_CHAIN=polygon -e AGT_REGISTRY=0x… -- npx -y @agtnames/mcp
 ```
 
 Or from a checkout: `claude mcp add agt -e … -- node packages/mcp/dist/index.js`.

@@ -1,7 +1,7 @@
 /**
- * @agt/resolver — resolve .agt names against AGT Registry v2 and verify their manifests.
+ * @agtnames/resolver — resolve .agt names against AGT Registry v2 and verify their manifests.
  *
- *   import { AgtResolver } from "@agt/resolver";
+ *   import { AgtResolver } from "@agtnames/resolver";
  *   const agt = new AgtResolver({ chain: "polygon" });                 // or { rpcUrl, registry }
  *   const r = await agt.resolveAgent("exampleagent.agt");
  *   // r.owner, r.active, r.perpetual, r.manifest, r.verified, r.reasons, r.records

@@ -1,6 +1,6 @@
 # agt — Claude Code plugin (testbed)
 
-Brings `.agt` agent names into Claude Code via the `@agt/mcp` server. The same MCP server works in any MCP-compatible client; this folder just packages it as a Claude Code plugin with a skill that teaches Claude when to use it.
+Brings `.agt` agent names into Claude Code via the `@agtnames/mcp` server. The same MCP server works in any MCP-compatible client; this folder just packages it as a Claude Code plugin with a skill that teaches Claude when to use it.
 
 ## Quick start (local testbed)
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * @agt/mcp — .agt for agents. Works with any MCP-compatible client (Claude Code, Cursor, custom agents).
+ * @agtnames/mcp — .agt for agents. Works with any MCP-compatible client (Claude Code, Cursor, custom agents).
  *
  * Tools (all read-only)
  *   agt_resolve    name → owner, expiry, active/perpetual, resolver records, verified manifest (+ reasons)
@@ -31,7 +31,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { AgtResolver, namehash, normalizeName, tokenIdOf, type AgentResolution, type AgtManifest } from "@agt/resolver";
+import { AgtResolver, namehash, normalizeName, tokenIdOf, type AgentResolution, type AgtManifest } from "@agtnames/resolver";
 
 // ---------------------------------------------------------------- config
 const env = (k: string, d?: string) => process.env[k] ?? d;
