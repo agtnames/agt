@@ -1,6 +1,6 @@
 {
   "name": "@agtnames/mcp",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "MCP server for .agt agent names: resolve, verify and discover agents by name against AGT Registry v2. Works with any MCP-compatible client (Claude Code, Cursor, custom agents).",
   "type": "module",
   "bin": {
@@ -9,6 +9,8 @@
   "main": "./dist/index.js",
   "files": [
     "dist",
+    "!dist/*.test.js",
+    "!dist/*.test.d.ts",
     "README.md"
   ],
   "engines": {
@@ -17,15 +19,22 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ds1/agt-site.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://agtnames.com/docs/claude-code",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "prepublishOnly": "npm run build"
+    "test": "node --test dist/*.test.js",
+    "prepublishOnly": "node scripts/check-publish-deps.mjs && npm run build && npm test"
   },
   "dependencies": {
     "@agtnames/resolver": "file:../resolver",
-    "@modelcontextprotocol/sdk": "^1.12.0",
-    "zod": "^3.23.0"
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
@@ -33,6 +42,7 @@
   },
   "keywords": [
     "mcp",
+    "mcp-server",
     "agt",
     "agent-identity",
     "naming",
