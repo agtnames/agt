@@ -12,7 +12,7 @@
  * Config (env)
  *   AGT_CHAIN            polygon | amoy | localhost   (default: polygon)
  *   AGT_RPC_URL          override RPC
- *   AGT_REGISTRY         override registry address (required until the chain default is published)
+ *   AGT_REGISTRY         override registry address (optional: polygon and amoy default to the deployed Registry v2)
  *   AGT_FNS              Freename FNS address for the legacy fallback (default from chain)
  *   AGT_LEGACY=1         enable Registry v1 (FNS.ownerOf) + DNS TXT fallbacks
  *   AGT_IPFS_GATEWAY     one of the allow-listed gateways (default https://dweb.link/ipfs/)

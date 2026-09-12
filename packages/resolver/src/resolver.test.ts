@@ -6,6 +6,7 @@ import { canonicalize, signManifest, verifyManifest, recoverSigner, type AgtMani
 import { rawCidV1, verifyCid, cidFromUri, base32Encode, base32Decode } from "./cid.js";
 import { inlineV1ToManifest } from "./dns.js";
 import { chainByName, CHAINS } from "./chains.js";
+import { AgtResolver } from "./index.js";
 
 test("namehash matches the registry node scheme and normalizes names", () => {
   assert.equal(normalizeName("ExampleAgent"), "exampleagent.agt");
@@ -68,8 +69,28 @@ test("Manifest v1 inline TXT lifts into a manifest-shaped object", () => {
   assert.equal(m.capabilities.length, 2);
 });
 
-test("chain defaults never invent a registry address", () => {
-  assert.equal(chainByName("polygon").registry, null);
-  assert.equal(CHAINS.polygon.fns, "0x465ea4967479A96D4490d575b5a6cC2B4A4BEE65");
+test("chain defaults carry the deployed Registry v2 addresses (mainnet + Amoy) and never invent one for localhost", () => {
+  const ADDR = /^0x[0-9a-fA-F]{40}$/;
+  const polygon = chainByName("polygon");
+  assert.equal(polygon.registry, "0x5B9386C47395B0551c814cC03b69cbD20eb0C87A");
+  assert.equal(polygon.resolver, "0x66Ae037d2A6a770B4772b889b6cA1704504399f2");
+  assert.equal(polygon.migrationClaim, "0x4276d03AcbcA433D257FBd90c53F090F4B16d38E");
+  assert.equal(polygon.fns, "0x465ea4967479A96D4490d575b5a6cC2B4A4BEE65");
+  assert.equal(polygon.deployBlock, 93590807);
+  for (const c of [CHAINS.polygon, CHAINS.amoy]) for (const k of ["registry", "resolver", "migrationClaim", "fns"] as const) assert.match(c[k]!, ADDR, `${c.name}.${k}`);
+  assert.equal(CHAINS.localhost.registry, null);
   assert.throws(() => chainByName("nope"));
+  // `{ chain: "polygon" }` alone is now a complete configuration; an explicit registry still wins.
+  assert.equal(new AgtResolver({ chain: "polygon" }).cfg.registry, polygon.registry);
+  assert.equal(new AgtResolver({ chain: "polygon", registry: "0x0000000000000000000000000000000000000001" }).cfg.registry, "0x0000000000000000000000000000000000000001");
+  assert.throws(() => new AgtResolver({ chain: "localhost" }), /not deployed/);
+});
+
+// Live acceptance for #211 (opt-in: AGT_LIVE_TEST=1): with no registry configured, the mainnet default resolves a
+// migrated name. launchpad.agt was the first mainnet migration (2026-09-11); agt.agt joins once the owner migrates it.
+test("mainnet default resolves a live name with no env (AGT_LIVE_TEST=1)", { skip: process.env.AGT_LIVE_TEST !== "1" }, async () => {
+  const r = await new AgtResolver({ chain: "polygon" }).resolve("launchpad.agt");
+  assert.equal(r.registered, true);
+  assert.equal(r.source, "registry-v2");
+  assert.match(r.owner ?? "", /^0x[0-9a-fA-F]{40}$/);
 });

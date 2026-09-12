@@ -8,6 +8,7 @@
  *   agt-resolve fns       exampleagent.agt …          Registry v1 (Freename) owner on Polygon
  *   agt-resolve namehash  exampleagent.agt             no network
  * Env fallbacks: AGT_CHAIN, AGT_RPC_URL, AGT_REGISTRY, AGT_FNS, AGT_IPFS_GATEWAY, AGT_DOH_URL
+ * With no chain / rpc / registry given at all, the CLI targets Polygon mainnet (the deployed Registry v2 defaults).
  * --legacy enables the FNS.ownerOf and DNS TXT fallbacks.
  */
 import { AgtResolver, namehash, normalizeName, tokenIdOf } from "./index.js";
@@ -32,10 +33,13 @@ async function main() {
     console.log(JSON.stringify({ name: n, node: namehash(n), tokenId: tokenIdOf(n).toString() }, null, 2));
     return;
   }
+  const rpcUrl = flags.rpc ?? process.env.AGT_RPC_URL;
+  const registry = flags.registry ?? process.env.AGT_REGISTRY;
   const r = new AgtResolver({
-    chain: flags.chain ?? process.env.AGT_CHAIN,
-    rpcUrl: flags.rpc ?? process.env.AGT_RPC_URL,
-    registry: flags.registry ?? process.env.AGT_REGISTRY,
+    // Explicit chain wins; otherwise default to mainnet unless the caller wired a custom rpc/registry pair.
+    chain: flags.chain ?? process.env.AGT_CHAIN ?? (rpcUrl || registry ? undefined : "polygon"),
+    rpcUrl,
+    registry,
     fns: flags.fns ?? process.env.AGT_FNS,
     ipfsGateway: flags.gateway ?? process.env.AGT_IPFS_GATEWAY,
     dohUrl: flags.doh ?? process.env.AGT_DOH_URL,

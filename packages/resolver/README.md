@@ -30,9 +30,9 @@ r.manifest              // the full signed manifest (or null)
 
 | Option | Description |
 |---|---|
-| `chain` | Named chain (e.g. `"polygon"`); fills `rpcUrl` + `registry` defaults |
+| `chain` | Named chain: `"polygon"` (mainnet; the CLI/MCP default), `"amoy"`, `"localhost"`. Fills `rpcUrl`, `registry`, `resolver`, `fns` defaults |
 | `rpcUrl` | Override the JSON-RPC endpoint |
-| `registry` | Override the registry contract address |
+| `registry` | Override the registry contract address (needed only for `localhost` or a custom deployment) |
 | `ipfsGateway` | Gateway for `ipfs://` manifests |
 | `timeoutMs` | Per-request timeout |
 | `maxManifestBytes` | Cap on manifest size (default 256 KiB) |
@@ -45,6 +45,17 @@ Returns `owner`, `registered` / `active` / `perpetual`, `records` (`addr`, `mani
 ### `isAgent(name) → boolean`
 
 Resolves a name and returns whether it has a valid, verified manifest.
+
+## Chains
+
+`CHAINS` exports the deployed Registry v2 addresses, so `new AgtResolver({ chain: "polygon" })` is a complete configuration:
+
+| Chain | Registry | Resolver | Migration claim |
+|---|---|---|---|
+| `polygon` (137) | `0x5B9386C47395B0551c814cC03b69cbD20eb0C87A` | `0x66Ae037d2A6a770B4772b889b6cA1704504399f2` | `0x4276d03AcbcA433D257FBd90c53F090F4B16d38E` |
+| `amoy` (80002) | `0xd08E0d9BCB26572Eaa22fe27Df53a5D2721D3BCD` | `0xE02f88b9BC0394742bBBe5c590E043B647B83419` | `0xC79A3fb86BcC3637BB58cDcd1f6E12Cf3fFDCBc8` |
+
+`localhost` has no defaults; pass `{ rpcUrl, registry }`.
 
 ## How resolution works
 

@@ -16,21 +16,23 @@ MCP server for `.agt` agent names. Resolve a name to its owner, records and **si
 
 ## Configure
 
+No configuration is needed for Polygon mainnet: the registry, resolver and RPC defaults are built in (`@agtnames/resolver` 1.0.2 or later). Everything below is optional.
+
 ```
-AGT_CHAIN=polygon            # polygon | amoy | localhost
-AGT_REGISTRY=0x…             # required until the chain default is published
-AGT_RPC_URL=…                # optional override
-AGT_LEGACY=1                 # optional: Registry v1 (Freename) + DNS TXT fallbacks
+AGT_CHAIN=polygon            # polygon (default) | amoy | localhost
+AGT_REGISTRY=0x…             # override the registry (required only for localhost / a custom deployment)
+AGT_RPC_URL=…                # override the RPC endpoint
+AGT_LEGACY=1                 # Registry v1 (Freename) + DNS TXT fallbacks
 AGT_IPFS_GATEWAY=https://dweb.link/ipfs/   # must be allow-listed
 ```
 
 ## Claude Code
 
 ```
-claude mcp add agt -e AGT_CHAIN=polygon -e AGT_REGISTRY=0x… -- npx -y @agtnames/mcp
+claude mcp add agt -- npx -y @agtnames/mcp
 ```
 
-Or from a checkout: `claude mcp add agt -e … -- node packages/mcp/dist/index.js`.
+Any other MCP-compatible client works the same way: run `npx -y @agtnames/mcp` over stdio. From a checkout: `claude mcp add agt -- node packages/mcp/dist/index.js`; against a local testbed add `-e AGT_CHAIN=localhost -e AGT_REGISTRY=0x… -e AGT_RPC_URL=http://127.0.0.1:8545`.
 
 ## Hardening
 
