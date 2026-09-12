@@ -19,8 +19,9 @@ const mcpDir = path.join(root, "packages", "mcp");
 const pkgPath = path.join(mcpDir, "package.json");
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+// --otp=<code> for authenticator-app 2FA; without it npm prompts (browser-based 2FA) — run from a real terminal.
 const otp = args.find((a) => a.startsWith("--otp="))?.slice(6);
-if (!dryRun && !otp) { console.error("usage: node scripts/publish-mcp.mjs --otp=<code> | --dry-run"); process.exit(1); }
+if (args.some((a) => !["--dry-run"].includes(a) && !a.startsWith("--otp="))) { console.error("usage: node scripts/publish-mcp.mjs [--otp=<code>] [--dry-run]"); process.exit(1); }
 
 const dirty = execSync("git status --porcelain -- packages/mcp", { cwd: root, encoding: "utf8" }).trim();
 if (dirty) { console.error("packages/mcp has uncommitted changes; commit or stash first:\n" + dirty); process.exit(1); }
@@ -35,7 +36,7 @@ writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
 console.log(`@agtnames/mcp@${pkg.version} → @agtnames/resolver@^${resolverVersion}${dryRun ? " (dry run)" : ""}`);
 
 try {
-  const npmArgs = ["publish", ...(dryRun ? ["--dry-run"] : ["--otp=" + otp])];
+  const npmArgs = ["publish", ...(dryRun ? ["--dry-run"] : []), ...(otp ? ["--otp=" + otp] : [])];
   const r = spawnSync("npm", npmArgs, { cwd: mcpDir, stdio: "inherit", shell: process.platform === "win32" });
   if (r.status !== 0) { console.error(`npm publish exited ${r.status}`); process.exitCode = r.status ?? 1; }
 } finally {

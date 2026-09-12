@@ -1,7 +1,0 @@
-{
-  "name": "agt",
-  "version": "0.1.0-testbed",
-  "description": ".agt agent names inside Claude Code — resolve, verify and discover agents by name via the @agtnames/mcp server (works with any MCP-compatible client).",
-  "author": { "name": "AGT Domains LLC" },
-  "keywords": ["agt", "agent-identity", "mcp", "naming"]
-}

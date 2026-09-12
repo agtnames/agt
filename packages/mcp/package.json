@@ -21,7 +21,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ds1/agt-site.git",
+    "url": "git+https://github.com/ds1/agt-site.git",
     "directory": "packages/mcp"
   },
   "homepage": "https://agtnames.com/docs/claude-code",
