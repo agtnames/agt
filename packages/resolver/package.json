@@ -1,6 +1,6 @@
 {
   "name": "@agtnames/resolver",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Resolve and verify .agt agent names against AGT Registry v2 (raw JSON-RPC, no wallet library needed)",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,6 +16,8 @@
   },
   "files": [
     "dist",
+    "!dist/*.test.js",
+    "!dist/*.test.d.ts",
     "README.md"
   ],
   "publishConfig": {
