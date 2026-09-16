@@ -1,6 +1,6 @@
 # Security policy — .agt Registry v2
 
-AGT Domains LLC operates the `.agt` agent-name registry: the AGT Registry v2 contracts on Polygon, agtnames.com, the `@agtnames/resolver` and `@agtnames/mcp` packages, and the hosted-manifest service at agts.dev. This document is the public half of the no-audit posture recorded in `DECISIONS.md` D-013: the contracts shipped without a third-party audit, and in exchange we pay for findings, keep an on-chain pause, and put every privileged change behind a public 48-hour delay.
+AGT Domains LLC operates the `.agt` agent-name registry: the AGT Registry v2 contracts on Polygon, agtnames.com, the `@agtnames/resolver` and `@agtnames/mcp` packages, and the hosted-manifest service at agts.dev. This document is the public half of the no-audit posture recorded in `DECISIONS.md` D-013 and D-024: the contracts shipped without a third-party audit and without a paid bug bounty. In exchange we keep an on-chain pause the multisig can pull instantly, put every privileged change behind a public 48-hour delay, publish this policy, and credit researchers publicly.
 
 ## Reporting
 
@@ -16,18 +16,17 @@ In scope:
 
 Out of scope: denial of service, rate-limit findings without a security consequence, issues in third-party services (Stripe, Vercel, Neon, Pinata, Polygon RPCs), social engineering, the contents of a name owner's own manifest, and anything already tracked publicly in the issue tracker.
 
-## Rewards
+## Recognition
 
-Paid in USDC on Polygon or by bank transfer, at our discretion by severity. Amounts are set by the owner and funded from the reward wallet before sales open (#165 control 4).
+There is **no paid bug bounty** at this stage (owner decision, D-024, 2026-09-16). What we do offer:
 
-| Severity | Examples | Reward |
-|---|---|---|
-| Critical | Mint or transfer any `.agt` without paying or without the owner's key; drain the relayer or treasury; bypass the timelock | US $[5,000–10,000] |
-| High | Mint below the table price with a validly-signed quote; permanently break resolution or renewal for names you do not own; forge a verified manifest | US $[1,000–2,500] |
-| Medium | Replay or farm signed quotes beyond the ledger cap; make the indexer or hosted manifests serve another owner's data; pause-bypass | US $[250–500] |
-| Low | Information leaks in admin/cron surfaces; misleading but non-exploitable pricing or state | US $[50–100] or public thanks |
+- A named credit in `CHANGELOG.md` and in the fix's release note, or anonymity if you prefer.
+- A free perpetual `.agt` name of your choosing (subject to the reserved and blocked lists) for any confirmed High or Critical finding.
+- Coordinated disclosure: we agree a publication date with you once the fix has cleared the timelock.
 
-First valid report wins. We may pay more for an exceptional write-up or a fix. Findings that only reproduce on Amoy but would apply to mainnet count at full severity.
+Severity is judged by us on impact: **Critical** — mint or transfer any `.agt` without paying or without the owner's key, drain the relayer or treasury, bypass the timelock. **High** — mint below the table price with a validly-signed quote, permanently break resolution or renewal for names you do not own, forge a verified manifest. **Medium** — replay or farm signed quotes beyond the ledger cap, make the indexer or hosted manifests serve another owner's data, pause bypass. **Low** — information leaks in admin/cron surfaces, misleading but non-exploitable state.
+
+If a paid programme is introduced later it will be announced here and in the changelog; findings reported before that date are not retroactively paid.
 
 ## Upgrade and admin policy
 
