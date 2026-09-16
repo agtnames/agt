@@ -79,6 +79,16 @@ export const LIMITS = { str: 512, url: 2048, list: 50, depth: 4, key: 64 } as co
 const CONTROL_CHARS = new RegExp("[" + String.fromCharCode(0) + "-" + String.fromCharCode(31) + String.fromCharCode(127) + "]", "g");
 export const clean = (s: string, max: number) => s.replace(CONTROL_CHARS, "").slice(0, max);
 
+/**
+ * `pricing.model` from a VERIFIED manifest, sanitized; null when unverified or absent. Lets a client tell a free
+ * agent from a paid one before it calls the endpoint, without fetching the whole manifest.
+ */
+export function pricingModel(manifest: unknown, verified: boolean): string | null {
+  if (!verified || !manifest || typeof manifest !== "object") return null;
+  const model = (manifest as { pricing?: { model?: unknown } }).pricing?.model;
+  return typeof model === "string" && model ? clean(model, LIMITS.key) : null;
+}
+
 /** Bound third-party JSON: strings capped (URLs longer), lists/objects capped with a visible marker, depth capped. */
 export function sanitize(v: unknown, depth = 0): unknown {
   if (depth > LIMITS.depth) return "[truncated]";
@@ -187,7 +197,7 @@ export function buildServer(cfg: Config, deps: ServerDeps = {}): McpServer {
 
   server.registerTool("agt_endpoint", {
     title: "Get an agent endpoint",
-    description: "Get an agent's endpoint URL for a protocol (mcp, a2a, http, ws). Prefers the verified manifest; falls back to the on-chain resolver record. `verified: false` means the URL is unverified third-party data.",
+    description: "Get an agent's endpoint URL for a protocol (mcp, a2a, http, ws) plus its pricing model (free, freemium, paid, contact) when the manifest verifies. Prefers the verified manifest; falls back to the on-chain resolver record. `verified: false` means the URL is unverified third-party data.",
     inputSchema: { name: nameSchema, protocol: z.enum(["mcp", "a2a", "http", "ws"]).describe("Endpoint protocol") },
     annotations: READ,
   }, guarded(async ({ name, protocol }) => {
@@ -195,7 +205,7 @@ export function buildServer(cfg: Config, deps: ServerDeps = {}): McpServer {
     const fromManifest = r.verified ? (r.manifest as AgtManifest | null)?.endpoints?.find((e) => e.protocol === protocol)?.url ?? null : null;
     const fromRecord = r.records.endpoints[protocol] ?? null;
     const url = fromManifest ?? fromRecord;
-    return { name: r.name, protocol, url: url ? clean(url, LIMITS.url) : null, source: fromManifest ? "verified-manifest" : fromRecord ? "resolver-record" : null, verified: !!fromManifest, reasons: r.reasons, notice: NOTICE };
+    return { name: r.name, protocol, url: url ? clean(url, LIMITS.url) : null, source: fromManifest ? "verified-manifest" : fromRecord ? "resolver-record" : null, verified: !!fromManifest, pricing: pricingModel(r.manifest, r.verified), reasons: r.reasons, notice: NOTICE };
   }));
 
   server.registerTool("agt_available", {

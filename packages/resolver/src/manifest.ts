@@ -6,6 +6,14 @@ import { secp256k1 } from "@noble/curves/secp256k1";
 import { keccak_256 } from "@noble/hashes/sha3";
 import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils";
 
+/** Manifest v3 §3.5. `model` is the field clients branch on; the rest is free-form and vendor-specific. */
+export interface AgtPricing {
+  model?: "free" | "freemium" | "paid" | "contact" | (string & {});
+  free_tier?: string;
+  paid?: { currency?: string; amount?: string; unit?: string; chain?: string; [k: string]: unknown };
+  [k: string]: unknown;
+}
+
 export interface AgtManifest {
   agt: string;
   name: string;
@@ -17,7 +25,7 @@ export interface AgtManifest {
   keys?: { id: string; purpose: string; type: string; publicKey: string; revoked?: boolean }[];
   endpoints?: { protocol: string; url: string; version?: string }[];
   capabilities?: { id: string; description?: string; input?: unknown; output?: unknown }[];
-  pricing?: unknown;
+  pricing?: AgtPricing;
   payments?: { rail: string; chain?: string; address?: string; token?: string }[];
   delegation?: { principal: string; scope: string[]; expires?: string };
   registrations?: { standard: string; chainId?: number; registry?: string; agentId?: string }[];

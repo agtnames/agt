@@ -42,6 +42,8 @@ r.manifest              // the full signed manifest (or null)
 
 Returns `owner`, `registered` / `active` / `perpetual`, `records` (`addr`, `manifestUri`, `wallet`, `endpoints`, `texts`), `manifest` (+ `manifestSource`), `verified` / `reasons` / `signer`, and `source`.
 
+`manifest` is typed as `AgtManifest` (spec v3): `description`, `icon`, `website`, `endpoints[]`, `capabilities[]`, `pricing` (`AgtPricing` — `model` is `free` / `freemium` / `paid` / `contact`), `payments[]`, `keys[]`, `delegation`, `registrations[]`. Only trust these fields when `verified` is `true`.
+
 ### `isAgent(name) → boolean`
 
 Resolves a name and returns whether it has a valid, verified manifest.

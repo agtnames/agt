@@ -30,7 +30,7 @@ From a checkout: `claude mcp add agt -- node packages/mcp/dist/index.js`; agains
 |---|---|
 | `agt_resolve` | owner, expiry, active/perpetual, on-chain records, verified manifest (under `untrusted`) |
 | `agt_manifest` | the manifest document + `verified` / `reasons` |
-| `agt_endpoint` | URL for `mcp` / `a2a` / `http` / `ws` — verified manifest first, resolver record second |
+| `agt_endpoint` | URL for `mcp` / `a2a` / `http` / `ws` — verified manifest first, resolver record second — plus `pricing` (`free` / `freemium` / `paid` / `contact`, from the verified manifest only) |
 | `agt_available` | can the name be registered right now |
 | `agt_namehash` | node + tokenId (no network) |
 
