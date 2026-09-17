@@ -1,7 +1,7 @@
 {
   "name": "@agtnames/mcp",
-  "version": "1.1.1",
-  "description": "MCP server for .agt agent names: resolve, verify and discover agents by name against AGT Registry v2. Works with any MCP-compatible client (Claude Code, Cursor, custom agents).",
+  "version": "1.2.0",
+  "description": "MCP server for .agt agent names: resolve, verify and discover agents by name against AGT Registry v2, and (opt-in) write records under an owner-signed session grant. Works with any MCP-compatible client (Claude Code, Cursor, custom agents).",
   "type": "module",
   "bin": {
     "agt-mcp": "dist/index.js"
@@ -34,7 +34,9 @@
   "dependencies": {
     "@agtnames/resolver": "file:../resolver",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "zod": "^3.25.0"
+    "zod": "^3.25.0",
+    "@agtnames/countersign": "file:../countersign",
+    "viem": "^2.56.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

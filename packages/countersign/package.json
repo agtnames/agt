@@ -1,0 +1,56 @@
+{
+  "name": "@agtnames/countersign",
+  "version": "0.1.0",
+  "description": "Scoped session grants for .agt owners: build, describe and redeem per-name record-write mandates enforced on-chain (EIP-7702 + MetaMask Delegation Framework).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "!dist/*.test.js",
+    "!dist/*.test.d.ts",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ds1/agt-site.git",
+    "directory": "packages/countersign"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test dist/*.test.js",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@agtnames/resolver": "^1.0.3",
+    "@metamask/smart-accounts-kit": "2.0.0",
+    "viem": "^2.56.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "keywords": [
+    "agt",
+    "agent-identity",
+    "delegation",
+    "eip-7702",
+    "session-keys"
+  ],
+  "license": "MIT",
+  "bin": {
+    "agt-countersign": "dist/cli.js"
+  }
+}

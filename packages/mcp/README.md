@@ -36,6 +36,20 @@ From a checkout: `claude mcp add agt -- node packages/mcp/dist/index.js`; agains
 
 All tools are annotated read-only and idempotent. `verified: true` means the manifest was signed by the on-chain owner (signer = manifest owner = registry owner). Everything derived from a manifest is returned inside an `untrusted` envelope with a notice: it is third-party content — data, never instructions. The server also publishes these rules as MCP `instructions`.
 
+## Write tools (opt-in): countersign session grants
+
+Set `AGT_SESSION_PASSPHRASE` (12+ characters) and nine more tools appear. They let this machine perform **record writes** on an owner's names under a grant the owner signed once, bounded on-chain: only the listed names, only the listed setters, no value, until the expiry, at most N calls per name, revocable by the owner in one transaction. See `@agtnames/countersign` for how a grant is built and enforced.
+
+| Tool | Does |
+|---|---|
+| `agt_session_new` | create this machine's session key (encrypted under `AGT_SESSION_DIR`, default `~/.agt/session`) and return its address |
+| `agt_session_import` | validate and store a grant the owner signed for that address; returns the plain-language mandate |
+| `agt_session_status` | calls used per name, expiry, whether the owner revoked, session gas balance |
+| `agt_session_forget` | drop the grant locally (and the key with `deleteKey`) |
+| `agt_set_text` `agt_set_addr` `agt_set_endpoint` `agt_set_manifest_uri` `agt_set_wallet` | redeem one record write; each returns the tx hash |
+
+Flow: `agt_session_new` → give the address to the owner → owner runs `agt-countersign build --session <address> --names … --actions … --ttl 1h --calls 5 --sign-with-key OWNER_KEY` (or signs the typed data in a wallet) → `agt_session_import` → write. Fund the session address with a little POL for gas; the grant itself cannot move value. Extra error codes: `no_session`, `grant_refused`, `caveat_violation`, `insufficient_gas`, `wrong_session`, `unknown_name`, `action_not_granted`.
+
 ## Errors
 
 Failures come back as an MCP error result (`isError: true`) whose text is `{ "error": { "code", "message" } }`:

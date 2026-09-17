@@ -58,7 +58,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   };
 }
 
-export const HELP = `@agtnames/mcp ${VERSION} — MCP server for .agt agent names (stdio, read-only)
+export const HELP = `@agtnames/mcp ${VERSION} — MCP server for .agt agent names (stdio, read-only by default)
 
 Usage: agt-mcp [--version] [--help]
   Runs an MCP server over stdio. Any MCP-compatible client can launch it, e.g.
@@ -82,4 +82,7 @@ Environment (all optional; Polygon mainnet works with none)
   AGT_TIMEOUT_MS       per-request timeout                  (default ${DEFAULTS.timeoutMs})
   AGT_MAX_MANIFEST     max manifest bytes                   (default ${DEFAULTS.maxManifestBytes})
   AGT_RATE_PER_MIN     tool calls per minute                (default ${DEFAULTS.ratePerMin})
+  AGT_SESSION_PASSPHRASE  enables the countersign write tools (agt_session_*, agt_set_*): the local session key
+                       is stored encrypted under AGT_SESSION_DIR (default ~/.agt/session) and redeems an
+                       owner-signed grant; writes are bounded by the grant's on-chain caveats
 `;

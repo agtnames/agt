@@ -138,3 +138,70 @@ test("live: resolves launchpad.agt on Polygon mainnet with no configuration", { 
     assert.ok((payload.untrusted as { notice: string }).notice);
   } finally { await client.close(); }
 });
+
+// ------------------------------------------------------------------------- countersign write tools (opt-in)
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { buildGrant, encodeGrant, signGrantWithKey } from "@agtnames/countersign";
+
+const SESSION = { AGT_SESSION_PASSPHRASE: "correct horse battery staple" };
+
+test("write tools are absent by default and present with AGT_SESSION_PASSPHRASE", T, async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "agt-mcp-session-"));
+  const client = await connect({ ...OFFLINE, ...SESSION, AGT_SESSION_DIR: dir });
+  try {
+    const { tools } = await client.listTools();
+    const names = tools.map((t) => t.name).sort();
+    assert.equal(names.length, 14, names.join(","));
+    for (const n of ["agt_session_new", "agt_session_import", "agt_session_status", "agt_session_forget", "agt_set_text", "agt_set_addr", "agt_set_endpoint", "agt_set_manifest_uri", "agt_set_wallet"]) assert.ok(names.includes(n), n);
+    for (const t of tools.filter((t) => t.name.startsWith("agt_set_"))) {
+      assert.equal(t.annotations?.readOnlyHint, false, `${t.name} is a write`);
+      assert.equal(t.annotations?.destructiveHint, true, `${t.name} is destructive`);
+      assert.ok((t.inputSchema as { properties?: Record<string, unknown> }).properties?.name, `${t.name} takes name`);
+    }
+  } finally { await client.close(); }
+});
+
+test("session flow offline: new key → import refuses foreign/expired grants → writes need a grant", T, async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "agt-mcp-session-"));
+  const client = await connect({ ...OFFLINE, ...SESSION, AGT_SESSION_DIR: dir });
+  try {
+    const noGrant = await call(client, "agt_set_text", { name: "countersignpoc", key: "url", value: "x" });
+    assert.equal(noGrant.isError, true);
+    assert.equal(noGrant.payload.error?.code, "misconfigured", JSON.stringify(noGrant.payload));
+
+    const created = await call(client, "agt_session_new", {});
+    assert.equal(created.isError, false, JSON.stringify(created.payload));
+    const session = created.payload.sessionAddress as `0x${string}`;
+    assert.match(session, /^0x[0-9a-fA-F]{40}$/);
+    assert.equal((await call(client, "agt_session_new", {})).payload.created, false);
+
+    const ownerPk = generatePrivateKey();
+    const owner = privateKeyToAccount(ownerPk).address;
+    const foreign = await signGrantWithKey(buildGrant({ chainId: 80002, delegator: owner, delegate: privateKeyToAccount(generatePrivateKey()).address, names: ["countersignpoc"], actions: ["text"], ttlSeconds: 3600, maxCalls: 3, nonce: 0n }), ownerPk);
+    const refused = await call(client, "agt_session_import", { grant: encodeGrant(foreign) });
+    assert.equal(refused.isError, true);
+    assert.equal(refused.payload.error?.code, "grant_refused", JSON.stringify(refused.payload));
+
+    const mine = await signGrantWithKey(buildGrant({ chainId: 80002, delegator: owner, delegate: session, names: ["countersignpoc", "notary"], actions: ["text", "endpoint"], ttlSeconds: 3600, maxCalls: 3, nonce: 0n }), ownerPk);
+    const imported = await call(client, "agt_session_import", { grant: encodeGrant(mine) });
+    assert.equal(imported.isError, false, JSON.stringify(imported.payload));
+    assert.deepEqual(imported.payload.names, ["countersignpoc.agt", "notary.agt"]);
+    assert.ok(Array.isArray(imported.payload.mandate));
+
+    const notGranted = await call(client, "agt_set_addr", { name: "notary", address: owner });
+    assert.equal(notGranted.isError, true);
+    assert.equal(notGranted.payload.error?.code, "action_not_granted", JSON.stringify(notGranted.payload));
+    const unknownName = await call(client, "agt_set_text", { name: "someoneelse", key: "url", value: "x" });
+    assert.equal(unknownName.isError, true);
+    assert.equal(unknownName.payload.error?.code, "unknown_name", JSON.stringify(unknownName.payload));
+
+    const forgotten = await call(client, "agt_session_forget", { deleteKey: false });
+    assert.equal(forgotten.payload.forgotten, true);
+    const status = await call(client, "agt_session_status", {});
+    assert.equal(status.payload.grant, null);
+    assert.equal(status.payload.sessionAddress, session);
+  } finally { await client.close(); }
+});

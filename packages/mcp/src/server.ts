@@ -18,6 +18,8 @@ import type { CallToolResult, ToolAnnotations } from "@modelcontextprotocol/sdk/
 import { z } from "zod";
 import { AgtResolver, namehash, normalizeName, tokenIdOf, type AgentResolution, type AgtManifest } from "@agtnames/resolver";
 import { VERSION, type Config } from "./config.js";
+import { sessionConfig } from "./session.js";
+import { registerWriteTools, type WriteDeps } from "./write-tools.js";
 
 // ------------------------------------------------------------------ errors
 
@@ -157,7 +159,7 @@ const fail = (e: unknown): CallToolResult => ({ content: [{ type: "text", text: 
 const READ: ToolAnnotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true };
 const OFFLINE: ToolAnnotations = { ...READ, openWorldHint: false };
 
-export interface ServerDeps { resolver?: () => AgtResolver }
+export interface ServerDeps { resolver?: () => AgtResolver; write?: WriteDeps; env?: NodeJS.ProcessEnv }
 
 export function buildServer(cfg: Config, deps: ServerDeps = {}): McpServer {
   let instance: AgtResolver | null = null;
@@ -221,6 +223,9 @@ export function buildServer(cfg: Config, deps: ServerDeps = {}): McpServer {
     inputSchema: { name: nameSchema },
     annotations: OFFLINE,
   }, guarded(async ({ name }) => { const n = checkName(name); return { name: n, node: namehash(n), tokenId: tokenIdOf(n).toString() }; }));
+
+  const session = sessionConfig(deps.env ?? process.env);
+  if (session) registerWriteTools(server, session, deps.write);
 
   return server;
 }
