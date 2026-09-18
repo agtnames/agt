@@ -1,0 +1,61 @@
+# Smithery configuration for @agtnames/mcp (stdio, npm). Docs: https://smithery.ai/docs
+# Keep `@agtnames/mcp@<version>` in step with package.json / server.json on every release.
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema for the options a Smithery user can set; each maps to one AGT_* environment variable.
+    # Everything is optional: with no configuration the server reads Polygon mainnet.
+    type: object
+    properties:
+      chain:
+        type: string
+        enum: [polygon, amoy, localhost]
+        default: polygon
+        description: Chain to read. polygon (mainnet) needs nothing else.
+      rpcUrl:
+        type: string
+        description: Override the JSON-RPC endpoint for the selected chain (AGT_RPC_URL).
+      registry:
+        type: string
+        description: Override the registry contract address; required only for localhost or a custom deployment (AGT_REGISTRY).
+      ipfsGateway:
+        type: string
+        enum:
+          - https://gateway.pinata.cloud/ipfs/
+          - https://dweb.link/ipfs/
+          - https://ipfs.io/ipfs/
+          - https://w3s.link/ipfs/
+          - https://cloudflare-ipfs.com/ipfs/
+        description: Pin ipfs:// manifest reads to one allow-listed gateway; unset walks the list in order (AGT_IPFS_GATEWAY).
+      timeoutMs:
+        type: integer
+        default: 10000
+        description: Per-request timeout for RPC and IPFS calls, in milliseconds (AGT_TIMEOUT_MS).
+      ratePerMin:
+        type: integer
+        default: 240
+        description: Tool calls per minute before the server answers rate_limited (AGT_RATE_PER_MIN).
+      sessionPassphrase:
+        type: string
+        description: Optional, 12+ characters. Enables the countersign write tools; the session key is stored encrypted under sessionDir (AGT_SESSION_PASSPHRASE).
+      sessionDir:
+        type: string
+        default: ~/.agt/session
+        description: Directory for the encrypted session key and imported grant (AGT_SESSION_DIR).
+  commandFunction:
+    # Produces the stdio command from the config above. Unset options are omitted so the server applies its own defaults.
+    |-
+    (config) => {
+      const env = {};
+      const set = (key, value) => { if (value !== undefined && value !== null && value !== '') env[key] = String(value); };
+      set('AGT_CHAIN', config.chain);
+      set('AGT_RPC_URL', config.rpcUrl);
+      set('AGT_REGISTRY', config.registry);
+      set('AGT_IPFS_GATEWAY', config.ipfsGateway);
+      set('AGT_TIMEOUT_MS', config.timeoutMs);
+      set('AGT_RATE_PER_MIN', config.ratePerMin);
+      set('AGT_SESSION_PASSPHRASE', config.sessionPassphrase);
+      set('AGT_SESSION_DIR', config.sessionDir);
+      return { command: 'npx', args: ['-y', '@agtnames/mcp@1.4.1'], env };
+    }
+  exampleConfig: {}

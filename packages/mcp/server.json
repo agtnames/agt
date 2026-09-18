@@ -1,0 +1,83 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ds1/agt",
+  "title": "AGT agent names",
+  "description": "Resolve, verify and discover .agt agent names: owner, records, signed manifest, endpoints.",
+  "websiteUrl": "https://agtnames.com/docs/claude-code",
+  "repository": {
+    "url": "https://github.com/ds1/agt-site",
+    "source": "github",
+    "subfolder": "packages/mcp"
+  },
+  "version": "1.4.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@agtnames/mcp",
+      "version": "1.4.1",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "AGT_CHAIN",
+          "description": "Chain to read: polygon (mainnet, needs nothing else), amoy or localhost.",
+          "isRequired": false,
+          "default": "polygon",
+          "choices": ["polygon", "amoy", "localhost"]
+        },
+        {
+          "name": "AGT_RPC_URL",
+          "description": "Override the JSON-RPC endpoint for the selected chain.",
+          "isRequired": false
+        },
+        {
+          "name": "AGT_REGISTRY",
+          "description": "Override the registry contract address (required only for localhost or a custom deployment).",
+          "isRequired": false
+        },
+        {
+          "name": "AGT_IPFS_GATEWAY",
+          "description": "Pin ipfs:// manifest reads to one allow-listed gateway; unset walks pinata, dweb.link, ipfs.io, w3s.link, cloudflare-ipfs in order.",
+          "isRequired": false,
+          "choices": [
+            "https://gateway.pinata.cloud/ipfs/",
+            "https://dweb.link/ipfs/",
+            "https://ipfs.io/ipfs/",
+            "https://w3s.link/ipfs/",
+            "https://cloudflare-ipfs.com/ipfs/"
+          ]
+        },
+        {
+          "name": "AGT_TIMEOUT_MS",
+          "description": "Per-request timeout for RPC and IPFS calls, in milliseconds.",
+          "isRequired": false,
+          "format": "number",
+          "default": "10000"
+        },
+        {
+          "name": "AGT_RATE_PER_MIN",
+          "description": "Tool calls per minute before the server answers rate_limited.",
+          "isRequired": false,
+          "format": "number",
+          "default": "240"
+        },
+        {
+          "name": "AGT_SESSION_PASSPHRASE",
+          "description": "Optional, 12+ characters. Enables the countersign write tools (agt_session_*, agt_set_*); the local session key is stored encrypted under AGT_SESSION_DIR.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "AGT_SESSION_DIR",
+          "description": "Directory for the encrypted session key and imported grant.",
+          "isRequired": false,
+          "format": "filepath",
+          "default": "~/.agt/session"
+        }
+      ]
+    }
+  ]
+}

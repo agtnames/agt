@@ -6,23 +6,57 @@ No configuration is needed for Polygon mainnet.
 
 ## Install
 
-Any MCP-compatible client: run the server over stdio.
+Any MCP-compatible client can launch the server over stdio; the command is the same everywhere:
 
 ```
 npx -y @agtnames/mcp
 ```
 
-Claude Code:
+| Client | How |
+|---|---|
+| Claude Code | `claude mcp add agt -- npx -y @agtnames/mcp` (or the plugin: `/plugin marketplace add ds1/agt-plugins` then `/plugin install agt@agtnames`, which adds a skill that teaches Claude when to use the tools) |
+| Cursor | add the JSON below to `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) |
+| Windsurf | add the same JSON to `~/.codeium/windsurf/mcp_config.json` |
+| Cline / VS Code | MCP Servers panel, Configure, add the same JSON to `cline_mcp_settings.json` |
+| Any other MCP client | the same JSON; clients that read registry manifests can also import `server.json` from this directory |
 
 ```
-claude mcp add agt -- npx -y @agtnames/mcp
+{
+  "mcpServers": {
+    "agt": { "command": "npx", "args": ["-y", "@agtnames/mcp"] }
+  }
+}
 ```
 
-Or install the plugin, which bundles the server with a skill that teaches Claude when and how to use it: `/plugin marketplace add ds1/agt-plugins` then `/plugin install agt@agtnames`.
+Optional settings go in `env` (see Configure); `"env": { "AGT_RPC_URL": "" }` means "use the chain default":
 
-Windows: if Claude Code reports `spawn npx ENOENT`, register it through the shell instead: `claude mcp add agt -- cmd /c npx -y @agtnames/mcp`.
+```
+{
+  "mcpServers": {
+    "agt": {
+      "command": "npx",
+      "args": ["-y", "@agtnames/mcp"],
+      "env": { "AGT_RPC_URL": "" }
+    }
+  }
+}
+```
+
+Windows: if a client reports `spawn npx ENOENT`, launch through the shell instead, e.g. `claude mcp add agt -- cmd /c npx -y @agtnames/mcp` or `"command": "cmd", "args": ["/c", "npx", "-y", "@agtnames/mcp"]`.
 
 From a checkout: `claude mcp add agt -- node packages/mcp/dist/index.js`; against a local testbed add `-e AGT_CHAIN=localhost -e AGT_REGISTRY=0x… -e AGT_RPC_URL=http://127.0.0.1:8545`.
+
+## Listed in
+
+Registry manifests live next to this file: `server.json` (official MCP registry, `io.github.ds1/agt`) and `smithery.yaml` (Smithery). Both pin the package version and are bumped in the same PR as `package.json`; `scripts/publish-mcp.mjs` refuses to publish otherwise. Listing URLs are filled in by the owner after each submission:
+
+| Directory | Listing |
+|---|---|
+| Official MCP registry (`registry.modelcontextprotocol.io`) | _pending_ (`mcp-publisher login github`, then `mcp-publisher publish` from `packages/mcp`) |
+| Smithery | _pending_ (smithery.ai/new, GitHub `ds1/agt-site`, path `packages/mcp`) |
+| Glama | _pending_ (claim the auto-imported `@agtnames/mcp` page) |
+| PulseMCP | _pending_ (submission form) |
+| mcp.so | _pending_ (submission form) |
 
 ## Tools
 
