@@ -41,7 +41,9 @@ r.manifest              // the full signed manifest (or null)
 
 ### `resolveAgent(name) → AgentResolution`
 
-Returns `owner`, `registered` / `active` / `perpetual`, `records` (`addr`, `manifestUri`, `wallet`, `endpoints`, `texts`), `manifest` (+ `manifestSource`), `verified` / `reasons` / `signer`, and `source`.
+Returns `owner`, `registered` / `active` / `perpetual`, `records` (`addr`, `manifestUri`, `wallet`, `endpoints`, `texts`), `manifest` (+ `manifestSource`), `verified` / `manifestStatus` / `reasons` / `signer`, and `source`.
+
+`manifestStatus` tells transport apart from trust: `verified`; `unverified` (the document loaded but failed the signature / owner / name check — do not act on it); `unavailable` (a pointer exists but the document could not be fetched from any gateway — retry later; this says nothing about the owner); `none` (no manifest published, or the name is not registered).
 
 `manifest` is typed as `AgtManifest` (spec v3): `description`, `icon`, `website`, `endpoints[]`, `capabilities[]`, `pricing` (`AgtPricing` — `model` is `free` / `freemium` / `paid` / `contact`), `payments[]`, `keys[]`, `delegation`, `registrations[]`. Only trust these fields when `verified` is `true`.
 

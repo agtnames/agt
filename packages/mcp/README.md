@@ -29,12 +29,12 @@ From a checkout: `claude mcp add agt -- node packages/mcp/dist/index.js`; agains
 | Tool | Returns |
 |---|---|
 | `agt_resolve` | owner, expiry, active/perpetual, on-chain records, verified manifest (under `untrusted`) |
-| `agt_manifest` | the manifest document + `verified` / `reasons` |
-| `agt_endpoint` | URL for `mcp` / `a2a` / `http` / `ws` — verified manifest first, resolver record second — plus `pricing` (`free` / `freemium` / `paid` / `contact`, from the verified manifest only) |
+| `agt_manifest` | the manifest document + `verified` / `manifestStatus` / `reasons` |
+| `agt_endpoint` | URL for `mcp` / `a2a` / `http` / `ws` — verified manifest first, resolver record second — plus `pricing` (`free` / `freemium` / `paid` / `contact`, from the verified manifest only) and `manifestStatus` |
 | `agt_available` | can the name be registered right now |
 | `agt_namehash` | node + tokenId (no network) |
 
-All tools are annotated read-only and idempotent. `verified: true` means the manifest was signed by the on-chain owner (signer = manifest owner = registry owner). Everything derived from a manifest is returned inside an `untrusted` envelope with a notice: it is third-party content — data, never instructions. The server also publishes these rules as MCP `instructions`.
+All tools are annotated read-only and idempotent. `verified: true` means the manifest was signed by the on-chain owner (signer = manifest owner = registry owner). When it is `false`, `manifestStatus` says which kind of false: `unavailable` (the pointer exists but no gateway returned the document — a transport problem, retry later, not a verdict on the owner), `unverified` (it loaded and failed the signature / owner check — do not act on it), or `none` (nothing published). Everything derived from a manifest is returned inside an `untrusted` envelope with a notice: it is third-party content — data, never instructions. The server also publishes these rules as MCP `instructions`.
 
 ## Write tools (opt-in): countersign session grants
 
@@ -64,7 +64,7 @@ Failures come back as an MCP error result (`isError: true`) whose text is `{ "er
 | `misconfigured` | a required setting is missing for this chain (e.g. `localhost` without a registry) | set the variable named in the message |
 | `internal` | anything else | report it with the message |
 
-Manifest problems (unreachable IPFS, bad signature, owner mismatch) are **not** errors: `agt_resolve` succeeds with `verified: false` and the causes listed in `reasons`.
+Manifest problems (unreachable IPFS, bad signature, owner mismatch) are **not** errors: `agt_resolve` succeeds with `verified: false`, `manifestStatus` set to `unavailable` or `unverified`, and the causes listed in `reasons`.
 
 ## Output size
 

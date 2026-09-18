@@ -66,11 +66,30 @@ export interface NameRecord {
   source: "registry-v2" | "fns-legacy" | "none";
 }
 
+/**
+ * Transport vs trust (#338). `verified: false` alone cannot tell "the document failed the signature check" from "no
+ * gateway returned the document", and a client that treats the second as a trust failure blames the owner for a 429.
+ *   verified      loaded and passed every check
+ *   unverified    loaded, but failed the signature / owner / name / CID check (or the name is expired) — do not act on it
+ *   unavailable   a pointer exists but the document could not be fetched — retry later; says nothing about the owner
+ *   none          nothing published (or the name is not registered)
+ */
+export type ManifestStatus = "verified" | "unverified" | "unavailable" | "none";
+
+/** Pure: derive the status from what resolution learned. Exported for tests and for callers rebuilding a resolution. */
+export function manifestStatusOf(r: { manifest: unknown | null; verified: boolean; fetchFailed: boolean }): ManifestStatus {
+  if (r.fetchFailed) return "unavailable";
+  if (!r.manifest) return "none";
+  return r.verified ? "verified" : "unverified";
+}
+
 export interface AgentResolution extends NameRecord {
   manifest: AgtManifest | null;
   manifestSource: "onchain" | "dns" | "dns-inline-v1" | null;
   cid: CidCheck | null;
   verified: boolean;
+  /** Which kind of `verified: false` this is — see ManifestStatus. */
+  manifestStatus: ManifestStatus;
   reasons: string[];
   signer: string | null;
   legacy?: { fnsOwner: string | null };
@@ -214,7 +233,7 @@ export class AgtResolver {
   /** Full resolution: registry record + manifest fetch + CID check + three-way verification (+ legacy fallbacks). */
   async resolveAgent(input: string): Promise<AgentResolution> {
     const rec = await this.resolve(input);
-    const out: AgentResolution = { ...rec, manifest: null, manifestSource: null, cid: null, verified: false, reasons: [], signer: null };
+    const out: AgentResolution = { ...rec, manifest: null, manifestSource: null, cid: null, verified: false, manifestStatus: "none", reasons: [], signer: null };
 
     let uri = rec.records.manifestUri;
     let dnsInline: Record<string, string[]> | null = null;
@@ -239,11 +258,13 @@ export class AgtResolver {
       out.manifest = inlineV1ToManifest(rec.name, dnsInline) as unknown as AgtManifest;
       out.manifestSource = "dns-inline-v1";
       out.reasons.push("Manifest v1 inline TXT: unsigned legacy format (lower trust)");
+      out.manifestStatus = "unverified";
       return out;
     }
     if (!uri) { if (rec.active) out.reasons.push("no manifest set"); return out; }
     if (!out.manifestSource) out.manifestSource = "onchain";
 
+    let fetchFailed = false;
     try {
       const bytes = await fetchManifestBytes(uri, { ipfsGateway: this.cfg.ipfsGateway, ipfsGateways: this.cfg.ipfsGateways, timeoutMs: this.cfg.timeoutMs, maxBytes: this.cfg.maxManifestBytes });
       out.cid = verifyCid(cidFromUri(uri), bytes);
@@ -255,9 +276,12 @@ export class AgtResolver {
       out.signer = v.signer;
       out.reasons.push(...v.reasons);
     } catch (e) {
+      // fetch, size cap or JSON parse: the document never became a manifest, so this is transport, not trust
+      fetchFailed = out.manifest === null;
       out.reasons.push(`manifest fetch failed: ${(e as Error).message}`);
     }
     out.verified = out.reasons.length === 0;
+    out.manifestStatus = manifestStatusOf({ manifest: out.manifest, verified: out.verified, fetchFailed });
     return out;
   }
 }

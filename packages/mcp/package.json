@@ -1,6 +1,6 @@
 {
   "name": "@agtnames/mcp",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "MCP server for .agt agent names: resolve, verify and discover agents by name against AGT Registry v2, and (opt-in) write records under an owner-signed session grant. Works with any MCP-compatible client (Claude Code, Cursor, custom agents).",
   "type": "module",
   "bin": {

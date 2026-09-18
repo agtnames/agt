@@ -140,3 +140,11 @@ test("fetchManifestBytes walks the gateway list on failure and reports every gat
     globalThis.fetch = realFetch;
   }
 });
+
+test("manifestStatusOf: transport (unavailable) is distinct from trust (unverified) and from nothing published (#338)", async () => {
+  const { manifestStatusOf } = await import("./index.js");
+  assert.equal(manifestStatusOf({ manifest: null, verified: false, fetchFailed: true }), "unavailable");
+  assert.equal(manifestStatusOf({ manifest: null, verified: false, fetchFailed: false }), "none");
+  assert.equal(manifestStatusOf({ manifest: { agt: "3.0" }, verified: false, fetchFailed: false }), "unverified");
+  assert.equal(manifestStatusOf({ manifest: { agt: "3.0" }, verified: true, fetchFailed: false }), "verified");
+});
