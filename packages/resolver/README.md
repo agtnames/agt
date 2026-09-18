@@ -33,7 +33,8 @@ r.manifest              // the full signed manifest (or null)
 | `chain` | Named chain: `"polygon"` (mainnet; the CLI/MCP default), `"amoy"`, `"localhost"`. Fills `rpcUrl`, `registry`, `resolver`, `fns` defaults |
 | `rpcUrl` | Override the JSON-RPC endpoint |
 | `registry` | Override the registry contract address (needed only for `localhost` or a custom deployment) |
-| `ipfsGateway` | Gateway for `ipfs://` manifests |
+| `ipfsGateways` | Ordered public gateways tried for `ipfs://` manifests until one answers (default `DEFAULT_IPFS_GATEWAYS`: pinata, dweb.link, ipfs.io, w3s.link). A 429 at one gateway is not a verdict on the document; the error names every gateway only when all fail |
+| `ipfsGateway` | Pin reads to a single gateway (no fallback) |
 | `timeoutMs` | Per-request timeout |
 | `maxManifestBytes` | Cap on manifest size (default 256 KiB) |
 | `legacyDns`, `dohUrl` | Opt-in DNS-over-HTTPS fallback for names that predate the registry (off by default) |

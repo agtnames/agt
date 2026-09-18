@@ -34,7 +34,10 @@ export interface ResolverOptions {
   /** Enable DNS TXT (DoH) fallback for Manifest v1/v2 names not carrying an on-chain manifest. */
   legacyDns?: boolean;
   dohUrl?: string;
+  /** Pin `ipfs://` manifest reads to one gateway (no fallback). */
   ipfsGateway?: string;
+  /** Ordered gateways tried until one answers (default DEFAULT_IPFS_GATEWAYS, pinata first). Overrides `ipfsGateway`. */
+  ipfsGateways?: readonly string[];
   timeoutMs?: number;
   /** Max manifest bytes accepted (default 256 KiB). */
   maxManifestBytes?: number;
@@ -242,7 +245,7 @@ export class AgtResolver {
     if (!out.manifestSource) out.manifestSource = "onchain";
 
     try {
-      const bytes = await fetchManifestBytes(uri, { ipfsGateway: this.cfg.ipfsGateway, timeoutMs: this.cfg.timeoutMs, maxBytes: this.cfg.maxManifestBytes });
+      const bytes = await fetchManifestBytes(uri, { ipfsGateway: this.cfg.ipfsGateway, ipfsGateways: this.cfg.ipfsGateways, timeoutMs: this.cfg.timeoutMs, maxBytes: this.cfg.maxManifestBytes });
       out.cid = verifyCid(cidFromUri(uri), bytes);
       if (out.cid === "mismatch") out.reasons.push("IPFS content does not match its CID");
       const manifest = parseManifest(bytes);

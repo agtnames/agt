@@ -94,3 +94,49 @@ test("mainnet default resolves a live name with no env (AGT_LIVE_TEST=1)", { ski
   assert.equal(r.source, "registry-v2");
   assert.match(r.owner ?? "", /^0x[0-9a-fA-F]{40}$/);
 });
+
+test("fetchManifestBytes walks the gateway list on failure and reports every gateway when all fail (#332)", async () => {
+  const { fetchManifestBytes, gatewaysFor, DEFAULT_IPFS_GATEWAYS } = await import("./manifest.js");
+  const doc = new TextEncoder().encode(JSON.stringify({ agt: "3.0", name: "weather.agt" }));
+  const calls: string[] = [];
+  const realFetch = globalThis.fetch;
+  const respond = (queue: Array<number | "network">) => {
+    globalThis.fetch = (async (url: string | URL) => {
+      calls.push(new URL(String(url)).host);
+      const next = queue.shift();
+      if (next === "network") throw new TypeError("fetch failed");
+      return new Response(next === 200 ? doc : "nope", { status: next ?? 500 });
+    }) as typeof fetch;
+  };
+  try {
+    assert.deepEqual(gatewaysFor({}), [...DEFAULT_IPFS_GATEWAYS]);
+    assert.equal(gatewaysFor({}).length > 1, true);
+    assert.deepEqual(gatewaysFor({ ipfsGateway: "https://ipfs.io/ipfs" }), ["https://ipfs.io/ipfs/"]);
+    assert.deepEqual(gatewaysFor({ ipfsGateway: "https://ipfs.io/ipfs/", ipfsGateways: ["https://a.example/ipfs"] }), ["https://a.example/ipfs/"]);
+
+    respond([429, 200]);
+    const bytes = await fetchManifestBytes("ipfs://bafyexample");
+    assert.equal(new TextDecoder().decode(bytes).includes("weather.agt"), true);
+    assert.deepEqual(calls, ["gateway.pinata.cloud", "dweb.link"]);
+
+    calls.length = 0;
+    respond([429, "network", 504, 429]);
+    await assert.rejects(fetchManifestBytes("ipfs://bafyexample"), (e: unknown) => {
+      const msg = (e as Error).message;
+      return msg.startsWith("fetch ipfs://bafyexample failed: HTTP 429 (gateway.pinata.cloud); fetch failed (dweb.link); HTTP 504 (ipfs.io); HTTP 429 (w3s.link)");
+    });
+    assert.equal(calls.length, 4);
+
+    calls.length = 0;
+    respond([429, 200]);
+    await assert.rejects(fetchManifestBytes("ipfs://bafyexample", { ipfsGateway: "https://ipfs.io/ipfs/" }), /fetch ipfs:\/\/bafyexample failed: HTTP 429 \(ipfs\.io\)$/);
+    assert.deepEqual(calls, ["ipfs.io"]);                                       // pinned: no fallback
+
+    calls.length = 0;
+    respond([503]);
+    await assert.rejects(fetchManifestBytes("https://agts.dev/weather.json"), /fetch https:\/\/agts\.dev\/weather\.json → HTTP 503/);
+    assert.deepEqual(calls, ["agts.dev"]);                                      // https: one attempt
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

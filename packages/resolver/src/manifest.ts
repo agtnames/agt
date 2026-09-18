@@ -120,29 +120,35 @@ export function verifyManifest(m: AgtManifest, onchainOwner?: string | null): Ve
 
 export const DEFAULT_MAX_MANIFEST_BYTES = 256 * 1024;
 
-/** Fetch the raw bytes of a manifest URI: ipfs:// (via gateway), https://, or data: (base64 or utf8). Enforces a size cap. */
-export async function fetchManifestBytes(
-  uri: string,
-  opts: { ipfsGateway?: string; timeoutMs?: number; maxBytes?: number } = {}
-): Promise<Uint8Array> {
-  const max = opts.maxBytes ?? DEFAULT_MAX_MANIFEST_BYTES;
-  const gateway = (opts.ipfsGateway ?? "https://dweb.link/ipfs/").replace(/\/?$/, "/");
-  if (uri.startsWith("data:")) {
-    const comma = uri.indexOf(",");
-    if (comma < 0) throw new Error("malformed data: URI");
-    const meta = uri.slice(5, comma);
-    const payload = uri.slice(comma + 1);
-    const bytes = /;base64/i.test(meta) ? new Uint8Array(Buffer.from(payload, "base64")) : new TextEncoder().encode(decodeURIComponent(payload));
-    if (bytes.length > max) throw new Error(`manifest exceeds ${max} bytes`);
-    return bytes;
-  }
-  if (!uri.startsWith("ipfs://") && !uri.startsWith("https://")) throw new Error(`unsupported manifest URI scheme: ${uri.split(":")[0]}`);
-  const url = uri.startsWith("ipfs://") ? gateway + uri.slice(7).replace(/^ipfs\//, "") : uri;
+/**
+ * Public gateways tried in order for `ipfs://` manifests when the caller pins none. Content is addressed by CID, so
+ * any gateway returns the same bytes (and `verifyCid` checks them); a 429 or outage at one is never a verdict on the
+ * document. Pinata first: on 2026-09-18 it served every registry manifest while dweb.link and ipfs.io rate-limited.
+ */
+export const DEFAULT_IPFS_GATEWAYS: readonly string[] = ["https://gateway.pinata.cloud/ipfs/", "https://dweb.link/ipfs/", "https://ipfs.io/ipfs/", "https://w3s.link/ipfs/"];
+
+export interface FetchManifestOptions {
+  /** Pin a single gateway (no fallback). Takes precedence over `ipfsGateways`' default but not over an explicit list. */
+  ipfsGateway?: string;
+  /** Ordered gateways to try for `ipfs://` URIs; default DEFAULT_IPFS_GATEWAYS (or `[ipfsGateway]` when that is set). */
+  ipfsGateways?: readonly string[];
+  /** Per-attempt timeout (each gateway gets its own). */
+  timeoutMs?: number;
+  maxBytes?: number;
+}
+
+/** The gateways a fetch will walk, normalised to a trailing slash. */
+export function gatewaysFor(opts: Pick<FetchManifestOptions, "ipfsGateway" | "ipfsGateways">): string[] {
+  const list = opts.ipfsGateways?.length ? opts.ipfsGateways : opts.ipfsGateway ? [opts.ipfsGateway] : DEFAULT_IPFS_GATEWAYS;
+  return list.map((g) => g.replace(/\/?$/, "/"));
+}
+
+async function fetchBytes(url: string, timeoutMs: number, max: number): Promise<Uint8Array> {
   const c = new AbortController();
-  const t = setTimeout(() => c.abort(), opts.timeoutMs ?? 10_000);
+  const t = setTimeout(() => c.abort(), timeoutMs);
   try {
     const r = await fetch(url, { signal: c.signal, headers: { accept: "application/json" }, redirect: "follow" });
-    if (!r.ok) throw new Error(`fetch ${url} → HTTP ${r.status}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const len = Number(r.headers.get("content-length") ?? 0);
     if (len > max) throw new Error(`manifest exceeds ${max} bytes`);
     const buf = new Uint8Array(await r.arrayBuffer());
@@ -153,6 +159,40 @@ export async function fetchManifestBytes(
   }
 }
 
+const hostOf = (url: string): string => { try { return new URL(url).host; } catch { return url; } };
+
+/**
+ * Fetch the raw bytes of a manifest URI: ipfs:// (via the gateway list, first success wins), https://, or data:
+ * (base64 or utf8). Enforces a size cap. When every gateway fails the error names each one, e.g.
+ * `fetch ipfs://bafy… failed: HTTP 429 (gateway.pinata.cloud); HTTP 429 (dweb.link)`.
+ */
+export async function fetchManifestBytes(uri: string, opts: FetchManifestOptions = {}): Promise<Uint8Array> {
+  const max = opts.maxBytes ?? DEFAULT_MAX_MANIFEST_BYTES;
+  const timeoutMs = opts.timeoutMs ?? 10_000;
+  if (uri.startsWith("data:")) {
+    const comma = uri.indexOf(",");
+    if (comma < 0) throw new Error("malformed data: URI");
+    const meta = uri.slice(5, comma);
+    const payload = uri.slice(comma + 1);
+    const bytes = /;base64/i.test(meta) ? new Uint8Array(Buffer.from(payload, "base64")) : new TextEncoder().encode(decodeURIComponent(payload));
+    if (bytes.length > max) throw new Error(`manifest exceeds ${max} bytes`);
+    return bytes;
+  }
+  if (uri.startsWith("https://")) {
+    try { return await fetchBytes(uri, timeoutMs, max); }
+    catch (e) { throw new Error(`fetch ${uri} → ${(e as Error).name === "AbortError" ? "timeout" : (e as Error).message}`); }
+  }
+  if (!uri.startsWith("ipfs://")) throw new Error(`unsupported manifest URI scheme: ${uri.split(":")[0]}`);
+  const path = uri.slice(7).replace(/^ipfs\//, "");
+  const failures: string[] = [];
+  for (const gateway of gatewaysFor(opts)) {
+    const url = gateway + path;
+    try { return await fetchBytes(url, timeoutMs, max); }
+    catch (e) { failures.push(`${(e as Error).name === "AbortError" ? "timeout" : (e as Error).message} (${hostOf(url)})`); }
+  }
+  throw new Error(`fetch ${uri} failed: ${failures.join("; ")}`);
+}
+
 export function parseManifest(bytes: Uint8Array): AgtManifest {
   const text = new TextDecoder().decode(bytes);
   const m = JSON.parse(text);
@@ -161,6 +201,6 @@ export function parseManifest(bytes: Uint8Array): AgtManifest {
 }
 
 /** Fetch + parse a manifest URI (see fetchManifestBytes). */
-export async function fetchManifest(uri: string, opts: { ipfsGateway?: string; timeoutMs?: number; maxBytes?: number } = {}): Promise<AgtManifest> {
+export async function fetchManifest(uri: string, opts: FetchManifestOptions = {}): Promise<AgtManifest> {
   return parseManifest(await fetchManifestBytes(uri, opts));
 }

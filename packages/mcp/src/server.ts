@@ -167,7 +167,7 @@ export function buildServer(cfg: Config, deps: ServerDeps = {}): McpServer {
     if (instance) return instance;
     instance = new AgtResolver({
       chain: cfg.chain, rpcUrl: cfg.rpcUrl, registry: cfg.registry, fns: cfg.fns,
-      legacyFns: cfg.legacy, legacyDns: cfg.legacy, ipfsGateway: cfg.ipfsGateway, dohUrl: cfg.dohUrl,
+      legacyFns: cfg.legacy, legacyDns: cfg.legacy, ipfsGateways: cfg.ipfsGateways, dohUrl: cfg.dohUrl,
       timeoutMs: cfg.timeoutMs, maxManifestBytes: cfg.maxManifestBytes,
     });
     return instance;

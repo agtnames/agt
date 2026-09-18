@@ -10,7 +10,12 @@ import { readFileSync } from "node:fs";
 // Resolved relative to this module (dist/config.js or src/config.ts → ../package.json). No resolveJsonModule needed.
 export const VERSION: string = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
 
-export const GATEWAY_ALLOWLIST = ["https://dweb.link/ipfs/", "https://ipfs.io/ipfs/", "https://cloudflare-ipfs.com/ipfs/", "https://w3s.link/ipfs/"] as const;
+/**
+ * Gateways the server may read `ipfs://` manifests from. With AGT_IPFS_GATEWAY unset every one is tried in this order
+ * until one answers (#332: public gateways rate-limit; a CID's bytes are the same everywhere and are checked against
+ * the CID). Setting AGT_IPFS_GATEWAY pins reads to that single gateway.
+ */
+export const GATEWAY_ALLOWLIST = ["https://gateway.pinata.cloud/ipfs/", "https://dweb.link/ipfs/", "https://ipfs.io/ipfs/", "https://w3s.link/ipfs/", "https://cloudflare-ipfs.com/ipfs/"] as const;
 
 export class ConfigError extends Error {
   constructor(message: string) { super(message); this.name = "ConfigError"; }
@@ -22,7 +27,10 @@ export interface Config {
   registry?: string;
   fns?: string;
   legacy: boolean;
+  /** First gateway that will be tried (the pinned one, or the head of the allow-list). */
   ipfsGateway: string;
+  /** Every gateway that will be tried, in order: `[ipfsGateway]` when pinned, otherwise the allow-list. */
+  ipfsGateways: readonly string[];
   dohUrl?: string;
   timeoutMs: number;
   maxManifestBytes: number;
@@ -40,17 +48,19 @@ function num(raw: string | undefined, d: number): number {
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const get = (k: string): string | undefined => env[k] || undefined; // "" → unset
-  const gateway = (get("AGT_IPFS_GATEWAY") ?? GATEWAY_ALLOWLIST[0]).replace(/\/?$/, "/");
-  if (!(GATEWAY_ALLOWLIST as readonly string[]).includes(gateway)) {
-    throw new ConfigError(`AGT_IPFS_GATEWAY ${gateway} is not allow-listed (${GATEWAY_ALLOWLIST.join(", ")})`);
+  const pinned = get("AGT_IPFS_GATEWAY")?.replace(/\/?$/, "/");
+  if (pinned && !(GATEWAY_ALLOWLIST as readonly string[]).includes(pinned)) {
+    throw new ConfigError(`AGT_IPFS_GATEWAY ${pinned} is not allow-listed (${GATEWAY_ALLOWLIST.join(", ")})`);
   }
+  const gateways: readonly string[] = pinned ? [pinned] : GATEWAY_ALLOWLIST;
   return {
     chain: get("AGT_CHAIN") ?? DEFAULTS.chain,
     rpcUrl: get("AGT_RPC_URL"),
     registry: get("AGT_REGISTRY"),
     fns: get("AGT_FNS"),
     legacy: get("AGT_LEGACY") === "1",
-    ipfsGateway: gateway,
+    ipfsGateway: gateways[0],
+    ipfsGateways: gateways,
     dohUrl: get("AGT_DOH_URL"),
     timeoutMs: num(get("AGT_TIMEOUT_MS"), DEFAULTS.timeoutMs),
     maxManifestBytes: num(get("AGT_MAX_MANIFEST"), DEFAULTS.maxManifestBytes),
@@ -77,7 +87,8 @@ Environment (all optional; Polygon mainnet works with none)
   AGT_REGISTRY         override the registry address (required only for localhost)
   AGT_FNS              legacy FNS address for AGT_LEGACY
   AGT_LEGACY=1         enable Registry v1 + DNS TXT fallbacks
-  AGT_IPFS_GATEWAY     one of: ${GATEWAY_ALLOWLIST.join(" ")}
+  AGT_IPFS_GATEWAY     pin ipfs:// reads to one gateway; unset = try each in order:
+                       ${GATEWAY_ALLOWLIST.join(" ")}
   AGT_DOH_URL          DoH endpoint for the DNS fallback
   AGT_TIMEOUT_MS       per-request timeout                  (default ${DEFAULTS.timeoutMs})
   AGT_MAX_MANIFEST     max manifest bytes                   (default ${DEFAULTS.maxManifestBytes})
