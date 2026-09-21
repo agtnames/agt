@@ -51,6 +51,14 @@ Returns `owner`, `registered` / `active` / `perpetual`, `records` (`addr`, `mani
 
 Resolves a name and returns whether it has a valid, verified manifest.
 
+### `agentCardFrom({ name, owner, manifest, verified, endpoints }) → A2AAgentCard | null`
+
+An A2A agent card (protocol 1.0 shape) for a name that publishes an `a2a` endpoint: `url` from the verified manifest (else the on-chain record), `skills[]` from the manifest capabilities, `provider` from the owner and website, `documentationUrl` to the name page. Manifest fields are used only when `verified` is true. Returns `null` without an `a2a` endpoint. agtnames.com serves the same card at `GET /api/v2/agent-card/<label>`, so ADK's `RemoteA2aAgent(agent_card=url)` and Microsoft Agent Framework's `A2AAgent(url=...)` can call a .agt agent by URL.
+
+### `erc8004RegistrationFrom(manifest, { manifestUri?, active? }) → Erc8004Registration`
+
+The JSON an ERC-8004 identity registration points at: `services[]` from the manifest endpoints (A2A, MCP, web), `x402Support` from the payment rails, `registrations[]` from `manifest.registrations` with standard `erc-8004`, plus an `agt` provenance block. Export today; on-chain registration is on the roadmap.
+
 ## Chains
 
 `CHAINS` exports the deployed Registry v2 addresses, so `new AgtResolver({ chain: "polygon" })` is a complete configuration:
@@ -71,10 +79,16 @@ Resolves a name and returns whether it has a valid, verified manifest.
 ## CLI
 
 ```
-npx agt-resolve exampleagent.agt
+npx agt-resolve resolve exampleagent.agt        # full resolution as JSON
+npx agt-resolve record exampleagent.agt         # on-chain record only
+npx agt-resolve available exampleagent.agt
+npx agt-resolve text exampleagent.agt url
+npx agt-resolve namehash exampleagent.agt       # no network
+npx agt-resolve card exampleagent.agt           # A2A agent card (exit 1 without an a2a endpoint)
+npx agt-resolve export-8004 exampleagent.agt    # ERC-8004 registration JSON from the verified manifest
 ```
 
-Prints a name's resolution as JSON.
+Flags: `--chain polygon|amoy|localhost`, `--rpc URL`, `--registry 0x…`, `--legacy`. Exit codes: 0 ok, 1 the lookup failed, 2 usage.
 
 ## Dependencies & runtimes
 

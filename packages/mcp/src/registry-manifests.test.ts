@@ -34,6 +34,30 @@ test("smithery.yaml: pins the same npm version", () => {
   assert.ok(yaml.includes(`'${pkg.name}@${pkg.version}'`), `smithery.yaml must start ${pkg.name}@${pkg.version}`);
 });
 
+test("gemini-extension.json (repo root): bundles this server at the same version", () => {
+  const ext = JSON.parse(read("../../../gemini-extension.json")) as { name: string; version: string; mcpServers: Record<string, { command: string; args: string[] }> };
+  assert.equal(ext.name, "agt");
+  assert.equal(ext.version, pkg.version, "gemini-extension.json version must follow package.json (publish-mcp.mjs refuses otherwise)");
+  assert.deepEqual(ext.mcpServers.agt, { command: "npx", args: ["-y", pkg.name] });
+});
+
+test("glama.json (repo root): names a maintainer so the Glama listing can be claimed", () => {
+  const glama = JSON.parse(read("../../../glama.json")) as { maintainers: string[] };
+  assert.ok(glama.maintainers.includes("ds1"));
+});
+
+test("package.json exports: importing the package never starts the stdio server", () => {
+  const p = JSON.parse(read("../package.json")) as { main: string; exports: Record<string, { import: string }>; bin: Record<string, string> };
+  assert.equal(p.main, "./dist/server.js");
+  assert.equal(p.exports["."].import, "./dist/server.js");
+  assert.equal(p.exports["./server"].import, "./dist/server.js");
+  assert.equal(p.bin["agt-mcp"], "dist/index.js", "the CLI entry is the only place stdio starts");
+});
+
+test("src/version.ts is generated from package.json (scripts/gen-version.mjs runs in `npm run build`)", () => {
+  assert.ok(read("../src/version.ts").includes(`export const VERSION = "${pkg.version}";`));
+});
+
 test("package.json files: tests stay out of the tarball; manifests are repo-only", () => {
   assert.ok(pkg.files.includes("!dist/*.test.js"));
   assert.ok(!pkg.files.includes("server.json") && !pkg.files.includes("smithery.yaml"));

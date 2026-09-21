@@ -14,11 +14,14 @@ npx -y @agtnames/mcp
 
 | Client | How |
 |---|---|
-| Claude Code | `claude mcp add agt -- npx -y @agtnames/mcp` (or the plugin: `/plugin marketplace add ds1/agt-plugins` then `/plugin install agt@agtnames`, which adds a skill that teaches Claude when to use the tools) |
-| Cursor | add the JSON below to `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) |
+| Claude Code | `claude mcp add agt -- npx -y @agtnames/mcp` (or the plugin: `/plugin marketplace add ds1/agt-plugins` then `/plugin install agt@agtnames`, which adds a skill that teaches Claude when to use the tools). Hosted endpoint (Streamable HTTP, live with the 1.5.0 release): `claude mcp add --transport http agt https://agtnames.com/api/mcp` |
+| Cursor | [Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=agt&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBhZ3RuYW1lcy9tY3AiXX0=) or add the JSON below to `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) |
+| VS Code (Copilot) | [Add to VS Code](vscode:mcp/install?%7B%22name%22%3A%22agt%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40agtnames%2Fmcp%22%5D%7D) or `code --add-mcp '{"name":"agt","command":"npx","args":["-y","@agtnames/mcp"]}'` |
 | Windsurf | add the same JSON to `~/.codeium/windsurf/mcp_config.json` |
-| Cline / VS Code | MCP Servers panel, Configure, add the same JSON to `cline_mcp_settings.json` |
-| Any other MCP client | the same JSON; clients that read registry manifests can also import `server.json` from this directory |
+| Cline | MCP Servers panel, Configure, add the same JSON to `cline_mcp_settings.json` |
+| Gemini CLI | `gemini extensions install https://github.com/ds1/agt-site` (the repo root carries `gemini-extension.json`) |
+| Agent skills | `npx skills add ds1/agt-site` installs the `agt-names` skill (`skills/agt-names/SKILL.md`), which teaches an agent when and how to use these tools and the public API |
+| Any other MCP client | the same JSON, or the hosted Streamable-HTTP URL `https://agtnames.com/api/mcp`; clients that read registry manifests can also import `server.json` from this directory |
 
 ```
 {

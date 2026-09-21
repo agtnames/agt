@@ -7,11 +7,13 @@
  *   agt-resolve text      exampleagent.agt "url" …
  *   agt-resolve fns       exampleagent.agt …          Registry v1 (Freename) owner on Polygon
  *   agt-resolve namehash  exampleagent.agt             no network
+ *   agt-resolve card      exampleagent.agt …          A2A agent card from the name (exit 1 without an a2a endpoint)
+ *   agt-resolve export-8004 exampleagent.agt …        ERC-8004 registration JSON from the verified manifest
  * Env fallbacks: AGT_CHAIN, AGT_RPC_URL, AGT_REGISTRY, AGT_FNS, AGT_IPFS_GATEWAY, AGT_DOH_URL
  * With no chain / rpc / registry given at all, the CLI targets Polygon mainnet (the deployed Registry v2 defaults).
  * --legacy enables the FNS.ownerOf and DNS TXT fallbacks.
  */
-import { AgtResolver, namehash, normalizeName, tokenIdOf } from "./index.js";
+import { AgtResolver, namehash, normalizeName, tokenIdOf, agentCardFrom, erc8004RegistrationFrom } from "./index.js";
 
 const argv = process.argv.slice(2);
 const flags: Record<string, string> = {};
@@ -25,7 +27,7 @@ const [cmd, name, arg] = pos;
 
 async function main() {
   if (!cmd || !name) {
-    console.error("usage: agt-resolve <resolve|record|available|text|fns|namehash> <name> [key] [--chain X] [--rpc URL] [--registry 0x…] [--legacy]");
+    console.error("usage: agt-resolve <resolve|record|available|text|fns|namehash|card|export-8004> <name> [key] [--chain X] [--rpc URL] [--registry 0x…] [--legacy]");
     process.exit(2);
   }
   if (cmd === "namehash") {
@@ -52,8 +54,23 @@ async function main() {
     : cmd === "available" ? { name: normalizeName(name), available: await r.available(name) }
     : cmd === "text" ? { name: normalizeName(name), key: arg, value: await r.text(name, arg ?? "") }
     : cmd === "fns" ? { name: normalizeName(name), fnsOwner: await r.fnsOwner(name) }
+    : cmd === "card" ? await card(r, name)
+    : cmd === "export-8004" ? await export8004(r, name)
     : null;
   if (!out) { console.error(`unknown command ${cmd}`); process.exit(2); }
   console.log(JSON.stringify(out, null, 2));
 }
+async function card(r: AgtResolver, n: string) {
+  const res = await r.resolveAgent(n);
+  const c = agentCardFrom({ name: res.name, owner: res.owner, manifest: res.manifest, verified: res.verified, endpoints: res.records.endpoints });
+  if (!c) throw new Error(`${res.name} publishes no a2a endpoint (verified: ${res.verified}${res.reasons.length ? `; ${res.reasons.join(", ")}` : ""})`);
+  return c;
+}
+
+async function export8004(r: AgtResolver, n: string) {
+  const res = await r.resolveAgent(n);
+  if (!res.manifest || !res.verified) throw new Error(`${res.name} has no verified manifest to export (${res.manifestStatus}${res.reasons.length ? `: ${res.reasons.join(", ")}` : ""})`);
+  return erc8004RegistrationFrom(res.manifest, { manifestUri: res.records.manifestUri || undefined, active: res.active });
+}
+
 main().catch((e) => { console.error(e.message ?? e); process.exit(1); });
