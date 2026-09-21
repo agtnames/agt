@@ -39,7 +39,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NPM_CONFIG_PROVENANCE: "true"     # equivalent to --provenance; local publishes from a laptop stay possible
+  # Provenance attestations are only accepted for PUBLIC source repositories (npm answers 422 otherwise, seen
+  # 2026-09-21 while ds1/agt-site was private). Enable it automatically once the repo is public; trusted publishing
+  # itself works either way. Laptop publishes are unaffected (no publishConfig.provenance in the packages).
+  NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false }}
   DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
   ONLY: ${{ inputs.package }}
 
