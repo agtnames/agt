@@ -92,7 +92,7 @@ Flags: `--chain polygon|amoy|localhost`, `--rpc URL`, `--registry 0x…`, `--leg
 
 ## Dependencies & runtimes
 
-No wallet library, no framework — resolution is raw JSON-RPC plus `fetch`. The only dependencies are the audited `@noble/curves` and `@noble/hashes` primitives (signature recovery and hashing). Runs in Node.js, Deno, Bun, and browsers.
+Resolution is raw JSON-RPC plus `fetch`, with no wallet library or framework required. The only dependencies are the audited `@noble/curves` and `@noble/hashes` primitives (signature recovery and hashing). Runs in Node.js, Deno, Bun, and browsers.
 
 ## License
 

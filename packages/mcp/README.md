@@ -14,13 +14,13 @@ npx -y @agtnames/mcp
 
 | Client | How |
 |---|---|
-| Claude Code | `claude mcp add agt -- npx -y @agtnames/mcp` (or the plugin: `/plugin marketplace add ds1/agt-plugins` then `/plugin install agt@agtnames`, which adds a skill that teaches Claude when to use the tools). Hosted endpoint (Streamable HTTP, read-only, nothing to install): `claude mcp add --transport http agt https://agtnames.com/api/mcp` |
+| Claude Code | `claude mcp add agt -- npx -y @agtnames/mcp` (or the plugin: `/plugin marketplace add agtnames/agt-plugins` then `/plugin install agt@agtnames`, which adds a skill that teaches Claude when to use the tools). Hosted endpoint (Streamable HTTP, read-only, nothing to install): `claude mcp add --transport http agt https://agtnames.com/api/mcp` |
 | Cursor | [Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=agt&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBhZ3RuYW1lcy9tY3AiXX0=) or add the JSON below to `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) |
 | VS Code (Copilot) | [Add to VS Code](vscode:mcp/install?%7B%22name%22%3A%22agt%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40agtnames%2Fmcp%22%5D%7D) or `code --add-mcp '{"name":"agt","command":"npx","args":["-y","@agtnames/mcp"]}'` |
 | Windsurf | add the same JSON to `~/.codeium/windsurf/mcp_config.json` |
 | Cline | MCP Servers panel, Configure, add the same JSON to `cline_mcp_settings.json` |
-| Gemini CLI | `gemini extensions install https://github.com/ds1/agt-site` (the repo root carries `gemini-extension.json`) |
-| Agent skills | `npx skills add ds1/agt-site` installs the `agt-names` skill (`skills/agt-names/SKILL.md`), which teaches an agent when and how to use these tools and the public API |
+| Gemini CLI | `gemini extensions install https://github.com/agtnames/agt` (the repo root carries `gemini-extension.json`) |
+| Agent skills | `npx skills add agtnames/agt` installs the `agt-names` skill (`skills/agt-names/SKILL.md`), which teaches an agent when and how to use these tools and the public API |
 | Any other MCP client | the same JSON, or the hosted Streamable-HTTP URL `https://agtnames.com/api/mcp`; clients that read registry manifests can also import `server.json` from this directory |
 
 ```
@@ -51,12 +51,12 @@ From a checkout: `claude mcp add agt -- node packages/mcp/dist/index.js`; agains
 
 ## Listed in
 
-Registry manifests live next to this file: `server.json` (official MCP registry, `io.github.ds1/agt`) and `smithery.yaml` (Smithery). Both pin the package version and are bumped in the same PR as `package.json`; `scripts/publish-mcp.mjs` refuses to publish otherwise. Listing URLs are filled in by the owner after each submission:
+Registry manifests live next to this file: `server.json` (official MCP registry, `com.agtnames/agt`, DNS-verified namespace) and `smithery.yaml` (Smithery). Both pin the package version and are bumped in the same PR as `package.json`; `scripts/publish-mcp.mjs` refuses to publish otherwise. Listing URLs are filled in by the owner after each submission:
 
 | Directory | Listing |
 |---|---|
-| Official MCP registry (`registry.modelcontextprotocol.io`) | _pending_ (`mcp-publisher login github`, then `mcp-publisher publish` from `packages/mcp`) |
-| Smithery | _pending_ (smithery.ai/new, GitHub `ds1/agt-site`, path `packages/mcp`) |
+| Official MCP registry (`registry.modelcontextprotocol.io`) | `com.agtnames/agt` (published by `release.yml`; the earlier `io.github.ds1/agt` 1.5.0 entry is retired) |
+| Smithery | _pending_ (smithery.ai/new, GitHub `agtnames/agt`, path `packages/mcp`) |
 | Glama | _pending_ (claim the auto-imported `@agtnames/mcp` page) |
 | PulseMCP | _pending_ (submission form) |
 | mcp.so | _pending_ (submission form) |

@@ -1,0 +1,55 @@
+{
+  "manifest": {
+    "agt": "3.0",
+    "name": "fixture.agt",
+    "owner": "0x37007a1c233f00b423bc0d177ac5b50ca9417596",
+    "updated": "2026-09-21T00:00:00Z",
+    "description": "Canonicalization fixture: nested objects, arrays, unicode (ü, 日本), empty string and numbers.",
+    "website": "https://agtnames.com",
+    "endpoints": [
+      {
+        "protocol": "mcp",
+        "url": "https://fixture.example/mcp"
+      },
+      {
+        "protocol": "a2a",
+        "url": "https://fixture.example/a2a",
+        "auth": "none"
+      }
+    ],
+    "capabilities": [
+      {
+        "id": "research",
+        "tags": [
+          "web",
+          "citations"
+        ]
+      },
+      {
+        "id": "summarize"
+      }
+    ],
+    "payments": {
+      "rails": [
+        "x402",
+        "usdc-polygon"
+      ],
+      "address": "0x37007a1c233f00b423bc0d177ac5b50ca9417596",
+      "minUsd": 0.05
+    },
+    "keys": [
+      {
+        "kid": "k1",
+        "kty": "EC",
+        "crv": "secp256k1",
+        "x": "AA",
+        "y": "BB"
+      }
+    ],
+    "zeta": 1,
+    "alpha": "",
+    "signature": "0xdeadbeef"
+  },
+  "canonical": "{\"agt\":\"3.0\",\"alpha\":\"\",\"capabilities\":[{\"id\":\"research\",\"tags\":[\"web\",\"citations\"]},{\"id\":\"summarize\"}],\"description\":\"Canonicalization fixture: nested objects, arrays, unicode (ü, 日本), empty string and numbers.\",\"endpoints\":[{\"protocol\":\"mcp\",\"url\":\"https://fixture.example/mcp\"},{\"auth\":\"none\",\"protocol\":\"a2a\",\"url\":\"https://fixture.example/a2a\"}],\"keys\":[{\"crv\":\"secp256k1\",\"kid\":\"k1\",\"kty\":\"EC\",\"x\":\"AA\",\"y\":\"BB\"}],\"name\":\"fixture.agt\",\"owner\":\"0x37007a1c233f00b423bc0d177ac5b50ca9417596\",\"payments\":{\"address\":\"0x37007a1c233f00b423bc0d177ac5b50ca9417596\",\"minUsd\":0.05,\"rails\":[\"x402\",\"usdc-polygon\"]},\"updated\":\"2026-09-21T00:00:00Z\",\"website\":\"https://agtnames.com\",\"zeta\":1}",
+  "eip191Digest": "278c26c5acc1ee588f66043957fe8871b24efd05326114fae6e9f8d66557d235"
+}

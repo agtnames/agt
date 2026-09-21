@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  packages:
+    name: packages · resolver + countersign + mcp
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Resolver — install, build, unit tests
+        working-directory: packages/resolver
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+      - name: Countersign — install, build, unit tests
+        working-directory: packages/countersign
+        run: |
+          npm ci
+          npm run build
+          npm test
+
+      - name: MCP — install (links ../resolver, ../countersign), build, unit + protocol tests
+        working-directory: packages/mcp
+        run: |
+          npm ci
+          npm run build
+          npm test
+          test "$(node dist/index.js --version)" = "$(node -p "require('./package.json').version")"
+          node scripts/check-publish-deps.mjs || true   # informational: file: dep is expected in CI, blocked at publish time
+
+      - name: Public copy — vendor black-box and link rules (skills, spec, READMEs, GEMINI.md)
+        run: node scripts/check-skills.mjs

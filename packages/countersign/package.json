@@ -1,6 +1,6 @@
 {
   "name": "@agtnames/countersign",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Scoped session grants for .agt owners: build, describe and redeem per-name record-write mandates enforced on-chain (EIP-7702 + MetaMask Delegation Framework).",
   "type": "module",
   "main": "./dist/index.js",
@@ -15,7 +15,8 @@
     "dist",
     "!dist/*.test.js",
     "!dist/*.test.d.ts",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=20"
@@ -25,7 +26,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ds1/agt-site.git",
+    "url": "git+https://github.com/agtnames/agt.git",
     "directory": "packages/countersign"
   },
   "scripts": {
@@ -62,5 +63,8 @@
   "bin": {
     "agt-countersign": "dist/cli.js"
   },
-  "homepage": "https://agtnames.com/docs/roadmap"
+  "homepage": "https://agtnames.com/docs/roadmap",
+  "bugs": {
+    "url": "https://github.com/agtnames/agt/issues"
+  }
 }

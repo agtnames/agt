@@ -16,7 +16,7 @@ test("server.json: official registry manifest matches package.json", () => {
   };
   assert.deepEqual(server.remotes, [{ type: "streamable-http", url: "https://agtnames.com/api/mcp" }], "the hosted endpoint (#363) is listed as a remote");
   assert.match(server.$schema, /^https:\/\/static\.modelcontextprotocol\.io\/schemas\/\d{4}-\d{2}-\d{2}\/server\.schema\.json$/);
-  assert.equal(server.name, "io.github.ds1/agt");
+  assert.equal(server.name, "com.agtnames/agt");
   assert.equal(pkg.mcpName, server.name, "the registry checks package.json mcpName against server.json name");
   assert.equal(server.version, pkg.version);
   assert.ok(server.description.length <= 100, "schema caps description at 100 characters");

@@ -66,12 +66,12 @@ try {
     console.log(`
 Published @agtnames/mcp@${pkg.version}. Registry listings next (#345):
   1. server.json + smithery.yaml already pin ${pkg.version} (checked above); if this was a version bump, they were bumped in the same PR.
-  2. Official MCP registry, from packages/mcp:  mcp-publisher login github   then   mcp-publisher publish
+  2. Official MCP registry, from packages/mcp:  mcp-publisher login dns --domain agtnames.com --private-key <seed>   then   mcp-publisher publish
      (first time: install mcp-publisher, see packages/mcp/README.md "Listed in"; the registry verifies package.json mcpName
       against server.json name, so wait ~5 min for npm to serve the new tarball before publishing).
   3. Smithery: the listing re-reads smithery.yaml from the default branch; re-publish from the server's Smithery page if it does not.
   4. Glama / PulseMCP / mcp.so: pull from npm + GitHub; nothing to do unless the README changed the install command.
-  5. Plugin pin: ds1/agt-plugins .mcp.json -> @agtnames/mcp@${pkg.version}, tag v${pkg.version}.
+  5. Plugin pin: agtnames/agt-plugins .mcp.json -> @agtnames/mcp@${pkg.version}, tag v${pkg.version}.
 `);
   }
 } finally {

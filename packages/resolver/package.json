@@ -1,6 +1,6 @@
 {
   "name": "@agtnames/resolver",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "Resolve and verify .agt agent names against AGT Registry v2 (raw JSON-RPC, no wallet library needed)",
   "type": "module",
   "main": "./dist/index.js",
@@ -19,7 +19,9 @@
     "dist",
     "!dist/*.test.js",
     "!dist/*.test.d.ts",
-    "README.md"
+    "README.md",
+    "LICENSE",
+    "fixtures"
   ],
   "publishConfig": {
     "access": "public"
@@ -41,7 +43,7 @@
   "homepage": "https://agtnames.com/docs/resolver-sdk",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ds1/agt-site.git",
+    "url": "git+https://github.com/agtnames/agt.git",
     "directory": "packages/resolver"
   },
   "keywords": [
@@ -58,5 +60,8 @@
     "polygon",
     "naming",
     "erc-8004"
-  ]
+  ],
+  "bugs": {
+    "url": "https://github.com/agtnames/agt/issues"
+  }
 }

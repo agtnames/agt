@@ -7,10 +7,10 @@ name: release
 # Every run walks resolver → countersign → mcp and publishes each package whose exact package.json version is not
 # on npm yet (a tag only triggers; the versions in the tree decide what ships). Publishing uses npm trusted
 # publishing (OIDC, provenance attestation, no token): the owner configures the trusted publisher once per package
-# on npmjs.com (repository ds1/agt-site, workflow release.yml). The mcp package goes through
+# on npmjs.com (repository agtnames/agt, workflow release.yml). The mcp package goes through
 # scripts/publish-mcp.mjs, which flips file: dependencies to registry ranges and enforces the version gates on
-# server.json / smithery.yaml / gemini-extension.json. Then mcp-publisher re-lists io.github.ds1/agt in the official
-# MCP registry (GitHub OIDC login), and Smithery is re-published when SMITHERY_TOKEN and SMITHERY_TARGET_URL exist.
+# server.json / smithery.yaml / gemini-extension.json. Then mcp-publisher re-lists com.agtnames/agt in the official
+# MCP registry (DNS-verified namespace: apex TXT record on agtnames.com + the MCP_DNS_PRIVATE_KEY secret), and Smithery is re-published when SMITHERY_TOKEN and SMITHERY_TARGET_URL exist.
 # The job summary lists what is left to do by hand (plugin pin, README "Listed in", GitHub topics).
 
 on:
@@ -31,7 +31,7 @@ on:
         default: ""
 
 permissions:
-  id-token: write      # npm trusted publishing + mcp-publisher github-oidc
+  id-token: write      # npm trusted publishing (mcp-publisher uses the DNS key, not OIDC)
   contents: read
 
 concurrency:
@@ -40,7 +40,7 @@ concurrency:
 
 env:
   # Provenance attestations are only accepted for PUBLIC source repositories (npm answers 422 otherwise, seen
-  # 2026-09-21 while ds1/agt-site was private). Enable it automatically once the repo is public; trusted publishing
+  # 2026-09-21 while the packages still lived in the private site repo). Enabled automatically while this repo is public; trusted publishing
   # itself works either way. Laptop publishes are unaffected (no publishConfig.provenance in the packages).
   NPM_CONFIG_PROVENANCE: ${{ github.event.repository.private == false }}
   DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
@@ -105,23 +105,27 @@ jobs:
         if: ${{ steps.plan.outputs.mcp == 'publish' && env.DRY_RUN != 'true' }}
         run: |
           for i in $(seq 1 30); do
-            if npm view "${{ steps.plan.outputs.mcp_name }}@${{ steps.plan.outputs.mcp_version }}" mcpName 2>/dev/null | grep -q "io.github.ds1/agt"; then echo "npm serves ${{ steps.plan.outputs.mcp_version }}"; exit 0; fi
+            if npm view "${{ steps.plan.outputs.mcp_name }}@${{ steps.plan.outputs.mcp_version }}" mcpName 2>/dev/null | grep -q "com.agtnames/agt"; then echo "npm serves ${{ steps.plan.outputs.mcp_version }}"; exit 0; fi
             sleep 10
           done
           echo "::warning::npm did not serve the new tarball within 5 minutes; mcp-publisher may reject the ownership check"
 
       - name: Install mcp-publisher
-        if: ${{ steps.plan.outputs.mcp == 'publish' }}
+        if: ${{ steps.plan.outputs.mcp == 'publish' || env.DRY_RUN == 'true' }}
         run: |
           curl -sSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
           sudo mv mcp-publisher /usr/local/bin/
           mcp-publisher --version || true
 
       - name: Re-list in the official MCP registry
-        if: ${{ steps.plan.outputs.mcp == 'publish' }}
+        if: ${{ steps.plan.outputs.mcp == 'publish' || env.DRY_RUN == 'true' }}
         working-directory: packages/mcp
+        env:
+          MCP_DNS_PRIVATE_KEY: ${{ secrets.MCP_DNS_PRIVATE_KEY }}
         run: |
-          mcp-publisher login github-oidc
+          # com.agtnames/* is DNS-verified: apex TXT "v=MCPv1; k=ed25519; p=<pubkey>" on agtnames.com, Ed25519 seed (64 hex) in the secret.
+          test -n "$MCP_DNS_PRIVATE_KEY" || { echo "::error::MCP_DNS_PRIVATE_KEY secret is not set"; exit 1; }
+          mcp-publisher login dns --domain agtnames.com --private-key "$MCP_DNS_PRIVATE_KEY"
           if [ "$DRY_RUN" = "true" ]; then echo "dry run: logged in; skipping mcp-publisher publish"; else mcp-publisher publish; fi
 
       - name: Re-publish on Smithery (only with a token and a hosted URL)
@@ -133,7 +137,7 @@ jobs:
           # @smithery/cli 4.x: `smithery mcp publish <url|bundle> -n <org/name>`. Token env name unverified against
           # the CLI's docs; `auth whoami` fails loudly if it is wrong, before anything is published.
           npx -y @smithery/cli@4 auth whoami
-          npx -y @smithery/cli@4 mcp publish "$SMITHERY_TARGET_URL" -n ds1/agt
+          npx -y @smithery/cli@4 mcp publish "$SMITHERY_TARGET_URL" -n agtnames/agt
 
       - name: Summary
         if: ${{ always() }}
@@ -148,9 +152,9 @@ jobs:
             echo "| @agtnames/mcp | ${{ steps.plan.outputs.mcp_version }} | ${{ steps.plan.outputs.mcp }} |"
             echo
             echo "### By hand after a real mcp publish"
-            echo "- pin \`@agtnames/mcp@${{ steps.plan.outputs.mcp_version }}\` in ds1/agt-plugins \`.mcp.json\` and tag \`v${{ steps.plan.outputs.mcp_version }}\`"
+            echo "- pin \`@agtnames/mcp@${{ steps.plan.outputs.mcp_version }}\` in agtnames/agt-plugins \`.mcp.json\` and tag \`v${{ steps.plan.outputs.mcp_version }}\`"
             echo "- check registry.modelcontextprotocol.io/v0.1/servers?search=agt shows the new version; paste listing URLs into packages/mcp/README.md \"Listed in\""
             echo "- Smithery re-reads smithery.yaml from the default branch; re-publish from the server page if it lags"
-            echo "- GitHub topics on ds1/agt-site: mcp-server, model-context-protocol, gemini-cli-extension, agent-skills, a2a (once; the Gemini gallery and skills.sh crawl by topic)"
+            echo "- GitHub topics on agtnames/agt: mcp-server, model-context-protocol, gemini-cli-extension, agent-skills, a2a (once; the Gemini gallery and skills.sh crawl by topic)"
             echo "- Glama, PulseMCP, mcp.so pull from npm and GitHub; nothing to do unless the install command changed"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -251,7 +251,7 @@ Approximately 942 domains were registered before this specification with the pre
 | `agt-endpoint-<protocol>=<url>` | One per protocol. |
 | `agt-pricing=<keyword>` | One of `free`/`paid`/`freemium`/`contact`. |
 
-Resolvers SHOULD parse v0 records into a v1-shaped object with `legacy: true`. Writers MUST NOT generate new v0 manifests — the format is frozen for read-only legacy compatibility. A migration tool for legacy holders to upgrade in place is tracked in [#110](https://github.com/ds1/agt-site/issues/110).
+Resolvers SHOULD parse v0 records into a v1-shaped object with `legacy: true`. Writers MUST NOT generate new v0 manifests — the format is frozen for read-only legacy compatibility. A migration tool for legacy holders to upgrade in place is on the agtnames.com roadmap.
 
 ## 11. Compatibility with A2A Agent Cards
 
