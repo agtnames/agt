@@ -1,0 +1,12 @@
+{
+  "name": "agt",
+  "version": "1.5.0",
+  "description": "Resolve, verify and discover .agt agent names: owner, records, signed manifest, endpoints. Read-only MCP server over Polygon; nothing to configure.",
+  "mcpServers": {
+    "agt": {
+      "command": "npx",
+      "args": ["-y", "@agtnames/mcp"]
+    }
+  },
+  "contextFileName": "GEMINI.md"
+}

@@ -1,0 +1,153 @@
+name: release
+
+# Publishes the three npm packages and re-lists the MCP server (#362, epic #359).
+#
+#   tag push resolver-v* / countersign-v* / mcp-v*   or   Actions → release → Run workflow (dry_run on by default)
+#
+# Every run walks resolver → countersign → mcp and publishes each package whose exact package.json version is not
+# on npm yet (a tag only triggers; the versions in the tree decide what ships). Publishing uses npm trusted
+# publishing (OIDC, provenance attestation, no token): the owner configures the trusted publisher once per package
+# on npmjs.com (repository ds1/agt-site, workflow release.yml). The mcp package goes through
+# scripts/publish-mcp.mjs, which flips file: dependencies to registry ranges and enforces the version gates on
+# server.json / smithery.yaml / gemini-extension.json. Then mcp-publisher re-lists io.github.ds1/agt in the official
+# MCP registry (GitHub OIDC login), and Smithery is re-published when SMITHERY_TOKEN and SMITHERY_TARGET_URL exist.
+# The job summary lists what is left to do by hand (plugin pin, README "Listed in", GitHub topics).
+
+on:
+  push:
+    tags:
+      - "resolver-v*"
+      - "countersign-v*"
+      - "mcp-v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "npm publish --dry-run and mcp-publisher login only"
+        type: boolean
+        default: true
+      package:
+        description: "Limit to one package (resolver | countersign | mcp); empty = every package whose version is new"
+        type: string
+        default: ""
+
+permissions:
+  id-token: write      # npm trusted publishing + mcp-publisher github-oidc
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  NPM_CONFIG_PROVENANCE: "true"     # equivalent to --provenance; local publishes from a laptop stay possible
+  DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run == true }}
+  ONLY: ${{ inputs.package }}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: npm 11.5+ (trusted publishing)
+        run: |
+          npm install -g npm@latest
+          npm --version
+
+      - name: Decide what is new
+        id: plan
+        run: |
+          set -e
+          for p in resolver countersign mcp; do
+            NAME=$(node -p "require('./packages/$p/package.json').name")
+            VER=$(node -p "require('./packages/$p/package.json').version")
+            if [ -n "$ONLY" ] && [ "$ONLY" != "$p" ]; then echo "$p: skipped (package input = $ONLY)"; echo "${p}=skip" >> "$GITHUB_OUTPUT"; continue; fi
+            if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+              echo "$p: $NAME@$VER already on npm"; echo "${p}=skip" >> "$GITHUB_OUTPUT"
+            else
+              echo "$p: $NAME@$VER is new"; echo "${p}=publish" >> "$GITHUB_OUTPUT"
+            fi
+            echo "${p}_version=$VER" >> "$GITHUB_OUTPUT"
+            echo "${p}_name=$NAME" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Publish @agtnames/resolver
+        if: ${{ steps.plan.outputs.resolver == 'publish' }}
+        working-directory: packages/resolver
+        run: |
+          npm ci
+          if [ "$DRY_RUN" = "true" ]; then npm publish --dry-run --access public; else npm publish --access public; fi
+
+      - name: Publish @agtnames/countersign
+        if: ${{ steps.plan.outputs.countersign == 'publish' }}
+        working-directory: packages/countersign
+        run: |
+          npm ci
+          if [ "$DRY_RUN" = "true" ]; then npm publish --dry-run --access public; else npm publish --access public; fi
+
+      - name: Publish @agtnames/mcp (through scripts/publish-mcp.mjs)
+        if: ${{ steps.plan.outputs.mcp == 'publish' }}
+        run: |
+          # publish-mcp.mjs rewrites file:../resolver and file:../countersign to the ranges of the versions in the tree;
+          # those versions must be on npm, which the two steps above guarantee on a fresh run.
+          (cd packages/resolver && npm ci && npm run build)
+          (cd packages/countersign && npm ci && npm run build)
+          (cd packages/mcp && npm ci)
+          if [ "$DRY_RUN" = "true" ]; then node scripts/publish-mcp.mjs --dry-run; else node scripts/publish-mcp.mjs; fi
+
+      - name: Wait for npm to serve the new mcp tarball
+        if: ${{ steps.plan.outputs.mcp == 'publish' && env.DRY_RUN != 'true' }}
+        run: |
+          for i in $(seq 1 30); do
+            if npm view "${{ steps.plan.outputs.mcp_name }}@${{ steps.plan.outputs.mcp_version }}" mcpName 2>/dev/null | grep -q "io.github.ds1/agt"; then echo "npm serves ${{ steps.plan.outputs.mcp_version }}"; exit 0; fi
+            sleep 10
+          done
+          echo "::warning::npm did not serve the new tarball within 5 minutes; mcp-publisher may reject the ownership check"
+
+      - name: Install mcp-publisher
+        if: ${{ steps.plan.outputs.mcp == 'publish' }}
+        run: |
+          curl -sSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          sudo mv mcp-publisher /usr/local/bin/
+          mcp-publisher --version || true
+
+      - name: Re-list in the official MCP registry
+        if: ${{ steps.plan.outputs.mcp == 'publish' }}
+        working-directory: packages/mcp
+        run: |
+          mcp-publisher login github-oidc
+          if [ "$DRY_RUN" = "true" ]; then echo "dry run: logged in; skipping mcp-publisher publish"; else mcp-publisher publish; fi
+
+      - name: Re-publish on Smithery (only with a token and a hosted URL)
+        if: ${{ steps.plan.outputs.mcp == 'publish' && env.DRY_RUN != 'true' && env.SMITHERY_API_KEY != '' && env.SMITHERY_TARGET_URL != '' }}
+        env:
+          SMITHERY_API_KEY: ${{ secrets.SMITHERY_TOKEN }}
+          SMITHERY_TARGET_URL: ${{ vars.SMITHERY_TARGET_URL }}
+        run: |
+          # @smithery/cli 4.x: `smithery mcp publish <url|bundle> -n <org/name>`. Token env name unverified against
+          # the CLI's docs; `auth whoami` fails loudly if it is wrong, before anything is published.
+          npx -y @smithery/cli@4 auth whoami
+          npx -y @smithery/cli@4 mcp publish "$SMITHERY_TARGET_URL" -n ds1/agt
+
+      - name: Summary
+        if: ${{ always() }}
+        run: |
+          {
+            echo "## release ${{ github.ref_name }}${{ env.DRY_RUN == 'true' && ' (dry run)' || '' }}"
+            echo
+            echo "| package | version | action |"
+            echo "|---|---|---|"
+            echo "| @agtnames/resolver | ${{ steps.plan.outputs.resolver_version }} | ${{ steps.plan.outputs.resolver }} |"
+            echo "| @agtnames/countersign | ${{ steps.plan.outputs.countersign_version }} | ${{ steps.plan.outputs.countersign }} |"
+            echo "| @agtnames/mcp | ${{ steps.plan.outputs.mcp_version }} | ${{ steps.plan.outputs.mcp }} |"
+            echo
+            echo "### By hand after a real mcp publish"
+            echo "- pin \`@agtnames/mcp@${{ steps.plan.outputs.mcp_version }}\` in ds1/agt-plugins \`.mcp.json\` and tag \`v${{ steps.plan.outputs.mcp_version }}\`"
+            echo "- check registry.modelcontextprotocol.io/v0.1/servers?search=agt shows the new version; paste listing URLs into packages/mcp/README.md \"Listed in\""
+            echo "- Smithery re-reads smithery.yaml from the default branch; re-publish from the server page if it lags"
+            echo "- GitHub topics on ds1/agt-site: mcp-server, model-context-protocol, gemini-cli-extension, agent-skills, a2a (once; the Gemini gallery and skills.sh crawl by topic)"
+            echo "- Glama, PulseMCP, mcp.so pull from npm and GitHub; nothing to do unless the install command changed"
+          } >> "$GITHUB_STEP_SUMMARY"

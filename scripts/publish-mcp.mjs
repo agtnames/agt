@@ -10,7 +10,8 @@
  * Publish the resolver first whenever its version moved; the range written here must exist on npm.
  * Same for @agtnames/countersign (file:../countersign → ^<packages/countersign version>).
  * Registry manifests (packages/mcp/server.json for the official MCP registry, smithery.yaml for Smithery) pin the
- * same version: the script refuses to publish when server.json's version differs, and prints the re-listing steps after.
+ * same version, as does gemini-extension.json at the repo root (Gemini CLI extensions gallery): the script refuses to
+ * publish when any of them differs, and prints the re-listing steps after.
  */
 import { execSync, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -22,6 +23,7 @@ const mcpDir = path.join(root, "packages", "mcp");
 const pkgPath = path.join(mcpDir, "package.json");
 const serverJsonPath = path.join(mcpDir, "server.json");
 const smitheryPath = path.join(mcpDir, "smithery.yaml");
+const geminiPath = path.join(root, "gemini-extension.json");
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
 // --otp=<code> for authenticator-app 2FA; without it npm prompts (browser-based 2FA) — run from a real terminal.
@@ -46,6 +48,8 @@ if (!readFileSync(smitheryPath, "utf8").includes(`${pkg.name}@${pkg.version}`)) 
   console.error(`packages/mcp/smithery.yaml does not start ${pkg.name}@${pkg.version}; bump the pin in commandFunction first`);
   process.exit(1);
 }
+const gemini = JSON.parse(readFileSync(geminiPath, "utf8"));
+if (gemini.version !== pkg.version) { console.error(`gemini-extension.json pins ${gemini.version} but package.json is ${pkg.version}; bump it first (the Gemini CLI gallery reads the manifest version from a release tag)`); process.exit(1); }
 const dep = pkg.dependencies["@agtnames/resolver"];
 if (!/^(file|link):/.test(dep)) console.warn(`note: @agtnames/resolver is already "${dep}" (expected file:../resolver)`);
 pkg.dependencies["@agtnames/resolver"] = `^${resolverVersion}`;

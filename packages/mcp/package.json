@@ -1,13 +1,13 @@
 {
   "name": "@agtnames/mcp",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "mcpName": "io.github.ds1/agt",
   "description": "MCP server for .agt agent names: resolve, verify and discover agents by name against AGT Registry v2, and (opt-in) write records under an owner-signed session grant. Works with any MCP-compatible client (Claude Code, Cursor, custom agents).",
   "type": "module",
   "bin": {
     "agt-mcp": "dist/index.js"
   },
-  "main": "./dist/index.js",
+  "main": "./dist/server.js",
   "files": [
     "dist",
     "!dist/*.test.js",
@@ -44,12 +44,36 @@
     "typescript": "^5.6.0"
   },
   "keywords": [
-    "mcp",
-    "mcp-server",
     "agt",
     "agent-identity",
+    "claude-code",
+    "gemini-cli-extension",
+    "agent-skills",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "agent",
+    "ai-agents",
+    "a2a",
+    "polygon",
     "naming",
-    "claude-code"
+    "erc-8004"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "types": "./dist/server.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    },
+    "./config": {
+      "types": "./dist/config.d.ts",
+      "import": "./dist/config.js"
+    },
+    "./package.json": "./package.json"
+  }
 }

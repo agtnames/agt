@@ -47,10 +47,20 @@
     "agent-identity",
     "delegation",
     "eip-7702",
-    "session-keys"
+    "session-keys",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "agent",
+    "ai-agents",
+    "a2a",
+    "polygon",
+    "naming",
+    "erc-8004"
   ],
   "license": "MIT",
   "bin": {
     "agt-countersign": "dist/cli.js"
-  }
+  },
+  "homepage": "https://agtnames.com/docs/roadmap"
 }
