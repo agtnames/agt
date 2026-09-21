@@ -26,7 +26,11 @@
           "description": "Chain to read: polygon (mainnet, needs nothing else), amoy or localhost.",
           "isRequired": false,
           "default": "polygon",
-          "choices": ["polygon", "amoy", "localhost"]
+          "choices": [
+            "polygon",
+            "amoy",
+            "localhost"
+          ]
         },
         {
           "name": "AGT_RPC_URL",
@@ -78,6 +82,12 @@
           "default": "~/.agt/session"
         }
       ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://agtnames.com/api/mcp"
     }
   ]
 }

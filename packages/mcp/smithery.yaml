@@ -1,4 +1,6 @@
 # Smithery configuration for @agtnames/mcp (stdio, npm). Docs: https://smithery.ai/docs
+# The hosted Streamable-HTTP endpoint (https://agtnames.com/api/mcp, #363) is registered on Smithery as a remote server
+# from release.yml (SMITHERY_TARGET_URL), not from this file: Smithery-hosted deployments would need a container.
 # Keep `@agtnames/mcp@<version>` in step with package.json / server.json on every release.
 startCommand:
   type: stdio
