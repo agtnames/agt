@@ -14,7 +14,7 @@ npx -y @agtnames/mcp
 
 | Client | How |
 |---|---|
-| Claude Code | `claude mcp add agt -- npx -y @agtnames/mcp` (or the plugin: `/plugin marketplace add ds1/agt-plugins` then `/plugin install agt@agtnames`, which adds a skill that teaches Claude when to use the tools). Hosted endpoint: `claude mcp add --transport http agt https://agtnames.com/api/mcp` |
+| Claude Code | `claude mcp add agt -- npx -y @agtnames/mcp` (or the plugin: `/plugin marketplace add ds1/agt-plugins` then `/plugin install agt@agtnames`, which adds a skill that teaches Claude when to use the tools). Hosted endpoint (Streamable HTTP, live with the 1.5.0 release): `claude mcp add --transport http agt https://agtnames.com/api/mcp` |
 | Cursor | [Add to Cursor](cursor://anysphere.cursor-deeplink/mcp/install?name=agt&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBhZ3RuYW1lcy9tY3AiXX0=) or add the JSON below to `.cursor/mcp.json` (project) or `~/.cursor/mcp.json` (global) |
 | VS Code (Copilot) | [Add to VS Code](vscode:mcp/install?%7B%22name%22%3A%22agt%22%2C%22command%22%3A%22npx%22%2C%22args%22%3A%5B%22-y%22%2C%22%40agtnames%2Fmcp%22%5D%7D) or `code --add-mcp '{"name":"agt","command":"npx","args":["-y","@agtnames/mcp"]}'` |
 | Windsurf | add the same JSON to `~/.codeium/windsurf/mcp_config.json` |

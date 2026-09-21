@@ -54,6 +54,10 @@ test("package.json exports: importing the package never starts the stdio server"
   assert.equal(p.bin["agt-mcp"], "dist/index.js", "the CLI entry is the only place stdio starts");
 });
 
+test("src/version.ts is generated from package.json (scripts/gen-version.mjs runs in `npm run build`)", () => {
+  assert.ok(read("../src/version.ts").includes(`export const VERSION = "${pkg.version}";`));
+});
+
 test("package.json files: tests stay out of the tarball; manifests are repo-only", () => {
   assert.ok(pkg.files.includes("!dist/*.test.js"));
   assert.ok(!pkg.files.includes("server.json") && !pkg.files.includes("smithery.yaml"));

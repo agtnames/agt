@@ -27,7 +27,7 @@
   },
   "homepage": "https://agtnames.com/docs/claude-code",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/gen-version.mjs && tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "test": "node --test dist/*.test.js",
     "prepublishOnly": "node scripts/check-publish-deps.mjs && npm run build && npm test"

@@ -5,10 +5,9 @@
  * An empty string counts as unset: plugin `.mcp.json` files pass variables through as `${AGT_RPC_URL:-}`, which
  * expands to "" when the user has not set anything, and "" must mean "use the chain default".
  */
-import { readFileSync } from "node:fs";
-
-// Resolved relative to this module (dist/config.js or src/config.ts → ../package.json). No resolveJsonModule needed.
-export const VERSION: string = (JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8")) as { version: string }).version;
+// Generated at build time (scripts/gen-version.mjs) so the constant survives bundling; committed alongside package.json.
+import { VERSION } from "./version.js";
+export { VERSION };
 
 /**
  * Gateways the server may read `ipfs://` manifests from. With AGT_IPFS_GATEWAY unset every one is tried in this order
