@@ -10,7 +10,9 @@
       "types": "./dist/index.d.ts",
       "browser": "./dist/index.js",
       "import": "./dist/index.js"
-    }
+    },
+    "./fixtures/*": "./fixtures/*",
+    "./package.json": "./package.json"
   },
   "bin": {
     "agt-resolve": "dist/cli.js"
