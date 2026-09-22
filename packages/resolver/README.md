@@ -32,6 +32,7 @@ r.manifest              // the full signed manifest (or null)
 |---|---|
 | `chain` | Named chain: `"polygon"` (mainnet; the CLI/MCP default), `"amoy"`, `"localhost"`. Fills `rpcUrl`, `registry`, `resolver`, `fns` defaults |
 | `rpcUrl` | Override the JSON-RPC endpoint |
+| `rpcUrls` | Ordered JSON-RPC endpoints tried until one answers (network errors, timeouts, non-2xx; a contract revert never fails over). `polygon` ships a three-endpoint list |
 | `registry` | Override the registry contract address (needed only for `localhost` or a custom deployment) |
 | `ipfsGateways` | Ordered public gateways tried for `ipfs://` manifests until one answers (default `DEFAULT_IPFS_GATEWAYS`: pinata, dweb.link, ipfs.io, w3s.link). A 429 at one gateway is not a verdict on the document; the error names every gateway only when all fail |
 | `ipfsGateway` | Pin reads to a single gateway (no fallback) |
@@ -46,6 +47,16 @@ Returns `owner`, `registered` / `active` / `perpetual`, `records` (`addr`, `mani
 `manifestStatus` tells transport apart from trust: `verified`; `unverified` (the document loaded but failed the signature / owner / name check — do not act on it); `unavailable` (a pointer exists but the document could not be fetched from any gateway — retry later; this says nothing about the owner); `none` (no manifest published, or the name is not registered).
 
 `manifest` is typed as `AgtManifest` (spec v3): `description`, `icon`, `website`, `endpoints[]`, `capabilities[]`, `pricing` (`AgtPricing` — `model` is `free` / `freemium` / `paid` / `contact`), `payments[]`, `keys[]`, `delegation`, `registrations[]`. Only trust these fields when `verified` is `true`.
+
+### `resolveAddresses(name, { coinType? }) → AddressRecord`
+
+The wallet fast path: two batched JSON-RPC round trips, no manifest fetch. Returns `addr` (the name's primary EVM address, ENS semantics), `wallet` (`agentWallet`, the wallet the agent pays and gets paid with), and, when `coinType` is given, `coinTypeAddr` (`addr(node, coinType)` as hex bytes; `coinTypeForChain(chainId)` builds the ENSIP-11 coin type). Lapsed names return `active: false` and null addresses. `checksumAddress()` turns a result into EIP-55 mixed case for display. This is what the MetaMask Snap calls when someone types `name.agt` in the send field.
+
+```ts
+const a = await agt.resolveAddresses("launchpad.agt");
+a.addr    // '0x…' or null
+a.wallet  // '0x…' or null
+```
 
 ### `isAgent(name) → boolean`
 
@@ -68,7 +79,7 @@ The JSON an ERC-8004 identity registration points at: `services[]` from the mani
 | `polygon` (137) | `0x5B9386C47395B0551c814cC03b69cbD20eb0C87A` | `0x66Ae037d2A6a770B4772b889b6cA1704504399f2` | `0x4276d03AcbcA433D257FBd90c53F090F4B16d38E` |
 | `amoy` (80002) | `0xd08E0d9BCB26572Eaa22fe27Df53a5D2721D3BCD` | `0xE02f88b9BC0394742bBBe5c590E043B647B83419` | `0xC79A3fb86BcC3637BB58cDcd1f6E12Cf3fFDCBc8` |
 
-`localhost` has no defaults; pass `{ rpcUrl, registry }`.
+`localhost` has no defaults; pass `{ rpcUrl, registry }`. `polygon` also carries `rpcUrls` (publicnode, dRPC, 1RPC), tried in order.
 
 ## How resolution works
 
@@ -81,6 +92,7 @@ The JSON an ERC-8004 identity registration points at: `services[]` from the mani
 ```
 npx agt-resolve resolve exampleagent.agt        # full resolution as JSON
 npx agt-resolve record exampleagent.agt         # on-chain record only
+npx agt-resolve addr exampleagent.agt           # payable records only (addr, agentWallet); add a coinType as the 2nd arg
 npx agt-resolve available exampleagent.agt
 npx agt-resolve text exampleagent.agt url
 npx agt-resolve namehash exampleagent.agt       # no network
@@ -92,7 +104,7 @@ Flags: `--chain polygon|amoy|localhost`, `--rpc URL`, `--registry 0x…`, `--leg
 
 ## Dependencies & runtimes
 
-Resolution is raw JSON-RPC plus `fetch`, with no wallet library or framework required. The only dependencies are the audited `@noble/curves` and `@noble/hashes` primitives (signature recovery and hashing). Runs in Node.js, Deno, Bun, and browsers.
+Resolution is raw JSON-RPC plus `fetch`, with no wallet library or framework required. The only dependencies are the audited `@noble/curves` and `@noble/hashes` primitives (signature recovery and hashing). The main entry uses no Node-only globals, so it runs in Node.js, Deno, Bun, browsers and sandboxed runtimes such as MetaMask Snaps.
 
 ## License
 

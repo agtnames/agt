@@ -3,6 +3,7 @@
  * agt-resolve — CLI over @agtnames/resolver.
  *   agt-resolve resolve   exampleagent.agt [--chain polygon|amoy|localhost] [--rpc URL] [--registry 0x…] [--legacy]
  *   agt-resolve record    exampleagent.agt …          on-chain record only (owner, expiry, resolver, records)
+ *   agt-resolve addr      exampleagent.agt [coinType] … payable records only (addr, agentWallet, addr(coinType)); two round trips
  *   agt-resolve available foo.agt …
  *   agt-resolve text      exampleagent.agt "url" …
  *   agt-resolve fns       exampleagent.agt …          Registry v1 (Freename) owner on Polygon
@@ -27,7 +28,7 @@ const [cmd, name, arg] = pos;
 
 async function main() {
   if (!cmd || !name) {
-    console.error("usage: agt-resolve <resolve|record|available|text|fns|namehash|card|export-8004> <name> [key] [--chain X] [--rpc URL] [--registry 0x…] [--legacy]");
+    console.error("usage: agt-resolve <resolve|record|addr|available|text|fns|namehash|card|export-8004> <name> [key|coinType] [--chain X] [--rpc URL] [--registry 0x…] [--legacy]");
     process.exit(2);
   }
   if (cmd === "namehash") {
@@ -51,6 +52,7 @@ async function main() {
   const out =
     cmd === "resolve" ? await r.resolveAgent(name)
     : cmd === "record" ? await r.resolve(name)
+    : cmd === "addr" ? await r.resolveAddresses(name, arg ? { coinType: BigInt(arg) } : {})
     : cmd === "available" ? { name: normalizeName(name), available: await r.available(name) }
     : cmd === "text" ? { name: normalizeName(name), key: arg, value: await r.text(name, arg ?? "") }
     : cmd === "fns" ? { name: normalizeName(name), fnsOwner: await r.fnsOwner(name) }
