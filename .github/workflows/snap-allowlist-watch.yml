@@ -1,0 +1,44 @@
+name: snap-allowlist-watch
+
+# The MetaMask Snaps Directory review takes up to a month (form submitted 2026-09-22 for @agtnames/snap 0.1.2).
+# Once a day, read MetaMask's allowlist (snaps-registry) and open one issue here the day npm:@agtnames/snap shows up,
+# so nobody has to poll by hand. Idempotent: it looks for an existing open or closed issue with the marker title first.
+
+on:
+  schedule:
+    - cron: "17 13 * * *"   # daily 13:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the allowlist
+        id: check
+        run: |
+          set -e
+          curl -sSfL https://raw.githubusercontent.com/MetaMask/snaps-registry/main/src/registry.json -o registry.json
+          if node -e "const r=require('./registry.json'); const s=r.verifiedSnaps && r.verifiedSnaps['npm:@agtnames/snap']; if(!s) process.exit(1); console.log(JSON.stringify({versions:Object.keys(s.versions||{}), name:s.metadata&&s.metadata.name}))" > found.json; then
+            echo "listed=true" >> "$GITHUB_OUTPUT"
+            echo "details=$(cat found.json)" >> "$GITHUB_OUTPUT"
+            echo "npm:@agtnames/snap is allowlisted: $(cat found.json)"
+          else
+            echo "listed=false" >> "$GITHUB_OUTPUT"
+            echo "not listed yet ($(date -u +%F))"
+          fi
+
+      - name: Open the issue once
+        if: steps.check.outputs.listed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DETAILS: ${{ steps.check.outputs.details }}
+        run: |
+          TITLE="MetaMask Snaps Directory: @agtnames/snap is allowlisted"
+          if gh issue list --repo "$GITHUB_REPOSITORY" --state all --search "in:title \"$TITLE\"" --json number --jq 'length' | grep -qv '^0$'; then
+            echo "issue already exists"; exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --label enhancement --body "$(printf 'npm:@agtnames/snap appeared in MetaMask/snaps-registry src/registry.json on %s.\n\nRegistry entry: %s\n\nFollow-ups (site repo): flip the Flask note on /docs/guides/metamask-send, record the Directory URL in the submissions checklist, publish the announcement, close the Snap epic.' "$(date -u +%F)" "$DETAILS")"
