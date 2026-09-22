@@ -1,10 +1,11 @@
 {
   "name": "@agtnames/snap",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MetaMask Snap: type name.agt in the send field and pay the name's on-chain address (AGT Registry on Polygon)",
   "main": "./dist/bundle.js",
   "files": [
     "dist",
+    "images",
     "snap.manifest.json",
     "README.md",
     "LICENSE"
