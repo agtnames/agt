@@ -111,7 +111,7 @@ describe("lookupDomain", () => {
     const down: AddressSource = { async resolveAddresses() { throw new Error("rpc failed on 3 endpoint(s)"); }, async isContract() { return false; } };
     await expect(lookupDomain("launchpad.agt", HOME_CHAIN, down)).resolves.toBeNull();
   });
-  it("off Polygon, a contract account (Safe / 4337 / 7702) is not reused; a key-controlled account is; a per-chain record skips the check", async () => {
+  it("off Polygon, a contract account (Safe / 4337) is not reused; a key-controlled account (EOA or 7702-delegated) is; a per-chain record skips the check", async () => {
     const checks: string[] = [];
     // Safe on Polygon → nothing on Base
     await expect(lookupDomain("treasury.agt", BASE, source(rec({ addr: ADDR, wallet: ADDR }), [], [ADDR], checks))).resolves.toBeNull();

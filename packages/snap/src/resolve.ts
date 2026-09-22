@@ -28,7 +28,7 @@ export type AddressRecords = Pick<AddressRecord, "active" | "addr" | "wallet" | 
 
 export interface AddressSource {
   resolveAddresses(name: string, opts: { coinType: bigint }): Promise<AddressRecords>;
-  /** eth_getCode on Polygon is non-empty (Safe, ERC-4337 account, EIP-7702 delegation). */
+  /** A contract account on Polygon (Safe, ERC-4337 account). An EIP-7702 delegated EOA is still key-controlled and is not one. */
   isContract(address: string): Promise<boolean>;
 }
 
@@ -92,9 +92,10 @@ export async function lookupDomain(domain: string, chainId: string, source: Addr
   }
   const resolvedAddresses = entriesFrom(name, chainId, rec);
   if (!resolvedAddresses.length) return null;
-  // Off Polygon, without a per-chain record, the only thing we know is a Polygon address. A key-controlled account is
-  // the same account on every EVM chain; a contract account (Safe, 4337, 7702) is not, and funds sent to it elsewhere
-  // can be unrecoverable. One eth_getCode on Polygon decides; on doubt (RPC failure) we show nothing.
+  // Off Polygon, without a per-chain record, the only thing we know is a Polygon address. A key-controlled account
+  // (plain EOA, or an EIP-7702 delegated one) is the same account on every EVM chain; a contract account (Safe, 4337)
+  // is not, and funds sent to it elsewhere can be unrecoverable. One eth_getCode on Polygon decides; on doubt (RPC
+  // failure) we show nothing.
   if (chainId !== HOME_CHAIN && !overrideOf(rec) && rec.addr) {
     try {
       if (await source.isContract(rec.addr)) return null;

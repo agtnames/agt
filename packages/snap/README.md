@@ -24,7 +24,7 @@ Then open MetaMask, start a send on Polygon, Ethereum, Base, Arbitrum, Optimism,
 | Polygon, no `agentWallet` | `addr` | `AGT Registry` |
 | Ethereum, Base, Arbitrum, Optimism, BNB, Avalanche | `addr(coinType)` for that chain when set (ENSIP-11), else `addr` | `AGT Registry` |
 
-Off Polygon, `addr` is reused only when it is a key-controlled account (empty `eth_getCode` on Polygon): a Safe or smart account is not the same account on another chain, so nothing is offered. The payment wallet is a Polygon address and is never offered elsewhere. Lapsed, unregistered or record-less names show nothing, and so does any read failure: the Snap never guesses. Other resolver Snaps may return a legacy record for the same name; look for the AGT Registry label. Reads go straight to Polygon public JSON-RPC endpoints through [`@agtnames/resolver`](../resolver) (two batched round trips, no third-party API). Address → name (reverse lookup) is planned for the next version.
+Off Polygon, `addr` is reused only when it is a key-controlled account on Polygon (no code, or an EIP-7702 delegation): a Safe or smart account is not the same account on another chain, so nothing is offered. The payment wallet is a Polygon address and is never offered elsewhere. Lapsed, unregistered or record-less names show nothing, and so does any read failure: the Snap never guesses. Other resolver Snaps may return a legacy record for the same name; look for the AGT Registry label. Reads go straight to Polygon public JSON-RPC endpoints through [`@agtnames/resolver`](../resolver) (two batched round trips, no third-party API). Address → name (reverse lookup) is planned for the next version.
 
 ## Permissions
 
