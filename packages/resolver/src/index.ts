@@ -344,13 +344,22 @@ export class AgtResolver {
   }
 
   /**
-   * `eth_getCode(address)` is non-empty: a contract account (Safe, ERC-4337 account, EIP-7702-delegated EOA), not a
-   * plain key-controlled account. Wallet surfaces use it before reusing a Polygon address on another chain, where a
-   * contract account is not guaranteed to exist or to be controlled by the same owner.
+   * What kind of account an address is on this chain, from `eth_getCode`:
+   *   eoa            no code: a key-controlled account, the same account on every EVM chain
+   *   delegated-eoa  an EIP-7702 delegation designator (`0xef0100` + 20 bytes): still controlled by the account's key,
+   *                  so still the same account elsewhere (the delegation itself is per chain)
+   *   contract       anything else (Safe, ERC-4337 account, …): not guaranteed to exist, or to have the same owner, on
+   *                  another chain
    */
-  async isContract(address: string): Promise<boolean> {
+  async accountKind(address: string): Promise<"eoa" | "delegated-eoa" | "contract"> {
     const code = await this.rpc("eth_getCode", [address, "latest"]);
-    return code !== "0x" && code !== "";
+    if (code === "0x" || code === "") return "eoa";
+    return /^0xef0100[0-9a-f]{40}$/i.test(code) ? "delegated-eoa" : "contract";
+  }
+
+  /** `accountKind(address) === "contract"`. Wallet surfaces use it before reusing a Polygon address on another chain. */
+  async isContract(address: string): Promise<boolean> {
+    return (await this.accountKind(address)) === "contract";
   }
 
   /** Registry v1 fallback: current FNS owner of `label.agt` (Freename id scheme). */
