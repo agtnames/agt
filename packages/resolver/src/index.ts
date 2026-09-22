@@ -147,6 +147,19 @@ const nonZeroAddress = (hex: string | null): string | null => {
 
 type RpcItem = { id?: number; result?: string; error?: { message?: string } };
 
+/**
+ * Every configured JSON-RPC endpoint failed at the transport level (network, timeout, non-2xx, non-JSON). `cause` is
+ * the last endpoint's error (a `TypeError("fetch failed")` with its own `cause.code`, an `AbortError`, …) so callers
+ * that classify by structure keep working; `endpoints` lists what was tried. A JSON-RPC error is never wrapped here.
+ */
+export class RpcUnavailableError extends Error {
+  readonly code = "RPC_UNAVAILABLE";
+  constructor(public readonly endpoints: readonly string[], cause: unknown) {
+    super(`rpc failed on ${endpoints.length} endpoint(s): ${(cause as Error)?.message ?? String(cause)}`, { cause });
+    this.name = "RpcUnavailableError";
+  }
+}
+
 export class AgtResolver {
   readonly cfg: Required<Pick<ResolverOptions, "rpcUrl" | "registry">> & ResolverOptions & { rpcUrls: string[]; chainCfg: ChainConfig | null };
 
@@ -183,7 +196,7 @@ export class AgtResolver {
         last = e;
       } finally { clearTimeout(t); }
     }
-    throw new Error(`rpc failed on ${this.cfg.rpcUrls.length} endpoint(s): ${(last as Error)?.message ?? String(last)}`);
+    throw new RpcUnavailableError(urls, last);
   }
 
   private async rpc(method: string, params: unknown[]): Promise<string> {
