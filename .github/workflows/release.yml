@@ -117,12 +117,28 @@ jobs:
 
       - name: Wait for npm to serve the new mcp tarball
         if: ${{ steps.plan.outputs.mcp == 'publish' && env.DRY_RUN != 'true' }}
+        env:
+          MCP_NAME: ${{ steps.plan.outputs.mcp_name }}
+          MCP_VERSION: ${{ steps.plan.outputs.mcp_version }}
         run: |
+          # npm publishes the packument (metadata) seconds after PUT, but the CDN serves the .tgz a minute or two
+          # later; `npm view … mcpName` reads the packument, so it can pass while `npx @agtnames/mcp@<v>` still 404s
+          # on the tarball, which then reddens the downstream agt-plugins CI (#13). Gate on the tarball being
+          # fetchable, not just the metadata, then confirm mcpName for the registry ownership check that follows.
           for i in $(seq 1 30); do
-            if npm view "${{ steps.plan.outputs.mcp_name }}@${{ steps.plan.outputs.mcp_version }}" mcpName 2>/dev/null | grep -q "com.agtnames/agt"; then echo "npm serves ${{ steps.plan.outputs.mcp_version }}"; exit 0; fi
+            url="$(npm view "$MCP_NAME@$MCP_VERSION" dist.tarball 2>/dev/null)"
+            if [ -n "$url" ] && [ "$(curl -s -o /dev/null -w '%{http_code}' -IL "$url")" = "200" ]; then
+              echo "npm serves the $MCP_VERSION tarball ($url)"
+              if npm view "$MCP_NAME@$MCP_VERSION" mcpName 2>/dev/null | grep -q "com.agtnames/agt"; then
+                echo "mcpName present"
+              else
+                echo "::warning::tarball is live but mcpName is not visible yet; mcp-publisher may reject the ownership check"
+              fi
+              exit 0
+            fi
             sleep 10
           done
-          echo "::warning::npm did not serve the new tarball within 5 minutes; mcp-publisher may reject the ownership check"
+          echo "::warning::npm did not serve the $MCP_VERSION tarball within 5 minutes; mcp-publisher may reject the ownership check and downstream npx installs may 404 briefly"
 
       - name: Install mcp-publisher
         if: ${{ steps.plan.outputs.mcp == 'publish' || env.DRY_RUN == 'true' }}
