@@ -20,12 +20,17 @@ const SEL = {
 };
 const abiBytes = (hex: string) => { const h = hex.replace(/^0x/, ""); return "0x" + encUint(32n) + encUint(BigInt(h.length / 2)) + h.padEnd(Math.ceil(h.length / 64) * 64, "0"); };
 
-type Chain = { active: boolean; addr: string | null; wallet: string | null; coin?: string | null; resolverReverts?: boolean; registryReverts?: boolean; contracts?: string[] };
+type Chain = { active: boolean; addr: string | null; wallet: string | null; coin?: string | null; resolverReverts?: boolean; registryReverts?: boolean; contracts?: string[]; delegated?: string[] };
 type Call = { jsonrpc: string; id: number; method: string; params: [{ to: string; data: string } | string, string] };
 
 /** Answer one eth_call (or eth_getCode) against a fake registry + resolver. */
 function answer(chain: Chain, c: Call): { id: number; result?: string; error?: { code: number; message: string } } {
-  if (c.method === "eth_getCode") return { id: c.id, result: chain.contracts?.map((a) => a.toLowerCase()).includes(String(c.params[0]).toLowerCase()) ? "0x6080604052" : "0x" };
+  if (c.method === "eth_getCode") {
+    const who = String(c.params[0]).toLowerCase();
+    if (chain.contracts?.map((a) => a.toLowerCase()).includes(who)) return { id: c.id, result: "0x6080604052" };
+    if (chain.delegated?.map((a) => a.toLowerCase()).includes(who)) return { id: c.id, result: "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b" }; // EIP-7702 designator seen on mainnet 2026-09-22
+    return { id: c.id, result: "0x" };
+  }
   const { to, data } = c.params[0] as { to: string; data: string };
   const sel = data.slice(0, 10);
   const zero = "0x" + encUint(0n);
@@ -160,10 +165,16 @@ test("resolveAddresses: a registry that errors on expiryOf/isActive throws inste
   } finally { m.restore(); }
 });
 
-test("isContract: eth_getCode distinguishes a contract account from a key-controlled one", async () => {
-  const m = mockRpc({ active: true, addr: ADDR, wallet: ADDR, contracts: [WALLET] }, { "a.example": "ok" });
+test("accountKind / isContract: eth_getCode tells a contract from a key-controlled account; an EIP-7702 delegation is still key-controlled", async () => {
+  const DELEGATED = "0x37007a1c233f00b423bc0d177ac5b50ca9417596";
+  const m = mockRpc({ active: true, addr: ADDR, wallet: ADDR, contracts: [WALLET], delegated: [DELEGATED] }, { "a.example": "ok" });
   try {
+    assert.equal(await make().accountKind(WALLET), "contract");
+    assert.equal(await make().accountKind(DELEGATED), "delegated-eoa");
+    assert.equal(await make().accountKind("0x000000000000000000000000000000000000dEaD"), "eoa");
     assert.equal(await make().isContract(WALLET), true);
+    assert.equal(await make().isContract(DELEGATED), false);
+    m.seen.length = 0;
     assert.equal(await make().isContract(ADDR), false);
     assert.deepEqual(m.seen, [{ host: "a.example", batch: 0 }, { host: "a.example", batch: 0 }]);
   } finally { m.restore(); }
