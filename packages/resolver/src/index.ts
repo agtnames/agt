@@ -282,8 +282,11 @@ export class AgtResolver {
       { to: reg, data: REG.isActive + idHex },
       { to: reg, data: REG.resolverOf + idHex }, // MVP registry has no resolverOf → null
     ]);
-    const expiry = expiryHex ? decUint(expiryHex) : 0n;
-    const active = activeHex ? decBool(activeHex) : false;
+    // A registry that does not answer expiryOf/isActive is a failure, not an unregistered name: a wallet must be able
+    // to tell "no such name" from "could not read", or an RPC hiccup silently drops the payee.
+    if (expiryHex === null || activeHex === null) throw new Error(`registry ${reg} did not answer for ${name} (eth_call error)`);
+    const expiry = decUint(expiryHex);
+    const active = decBool(activeHex);
     const resolver = nonZeroAddress(resolverHex);
 
     const out: AddressRecord = { name, label, tokenId: id.toString(), node, registered: expiry !== 0n, active, resolver, addr: null, wallet: null };

@@ -20,7 +20,7 @@ const SEL = {
 };
 const abiBytes = (hex: string) => { const h = hex.replace(/^0x/, ""); return "0x" + encUint(32n) + encUint(BigInt(h.length / 2)) + h.padEnd(Math.ceil(h.length / 64) * 64, "0"); };
 
-type Chain = { active: boolean; addr: string | null; wallet: string | null; coin?: string | null; resolverReverts?: boolean };
+type Chain = { active: boolean; addr: string | null; wallet: string | null; coin?: string | null; resolverReverts?: boolean; registryReverts?: boolean };
 type Call = { jsonrpc: string; id: number; method: string; params: [{ to: string; data: string }, string] };
 
 /** Answer one eth_call against a fake registry + resolver. */
@@ -29,6 +29,7 @@ function answer(chain: Chain, c: Call): { id: number; result?: string; error?: {
   const sel = data.slice(0, 10);
   const zero = "0x" + encUint(0n);
   if (to.toLowerCase() === REGISTRY.toLowerCase()) {
+    if (chain.registryReverts) return { id: c.id, error: { code: 3, message: "execution reverted" } };
     if (sel === SEL.expiryOf) return { id: c.id, result: "0x" + encUint(chain.active ? PERPETUAL : 1n) };
     if (sel === SEL.isActive) return { id: c.id, result: "0x" + encUint(chain.active ? 1n : 0n) };
     if (sel === SEL.resolverOf) return chain.resolverReverts ? { id: c.id, error: { code: 3, message: "execution reverted" } } : { id: c.id, result: "0x" + encAddress(RESOLVER) };
@@ -144,6 +145,14 @@ test("resolveAddresses: a reverting item is null without failing over; an endpoi
     assert.equal(r.wallet, WALLET);
     assert.equal(m2.seen.filter((s) => s.batch === 0).length, 5, "3 + 2 single calls after the two rejected batches");
   } finally { m2.restore(); }
+});
+
+test("resolveAddresses: a registry that errors on expiryOf/isActive throws instead of reporting an unregistered name", async () => {
+  const m = mockRpc({ active: true, addr: ADDR, wallet: ADDR, registryReverts: true }, { "a.example": "ok" });
+  try {
+    await assert.rejects(make().resolveAddresses("launchpad.agt"), /registry 0x5B93.* did not answer for launchpad\.agt/);
+    assert.equal(m.seen.length, 1, "an eth_call error is an answer: no failover to b.example");
+  } finally { m.restore(); }
 });
 
 test("constructor: rpcUrls precedence (explicit list > rpcUrl > chain list > chain url) and polygon ships a fallback list", () => {
