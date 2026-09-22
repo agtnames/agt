@@ -167,13 +167,18 @@ export class AgtResolver {
    *  non-2xx, non-JSON) move to the next endpoint; a JSON-RPC error is an answer and is returned to the caller. */
   private async post(body: unknown): Promise<unknown> {
     let last: unknown;
-    for (const url of this.cfg.rpcUrls) {
+    const urls = [...this.cfg.rpcUrls];
+    for (let i = 0; i < urls.length; i++) {
       const c = new AbortController();
       const t = setTimeout(() => c.abort(), this.cfg.timeoutMs ?? 15_000);
       try {
-        const r = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: c.signal });
+        const r = await fetch(urls[i], { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: c.signal });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return await r.json();
+        const j = await r.json();
+        // Sticky failover: endpoints that just failed go to the back so the next round trip does not pay for them again
+        // (a wallet lookup has a fixed time budget). cfg.rpcUrl keeps naming the first configured endpoint.
+        if (i > 0) this.cfg.rpcUrls.push(...this.cfg.rpcUrls.splice(0, i));
+        return j;
       } catch (e) {
         last = e;
       } finally { clearTimeout(t); }
@@ -323,6 +328,16 @@ export class AgtResolver {
 
   async available(input: string): Promise<boolean> {
     return decBool(await this.call(this.cfg.registry, REG.available + encUint(tokenIdOf(normalizeName(input)))));
+  }
+
+  /**
+   * `eth_getCode(address)` is non-empty: a contract account (Safe, ERC-4337 account, EIP-7702-delegated EOA), not a
+   * plain key-controlled account. Wallet surfaces use it before reusing a Polygon address on another chain, where a
+   * contract account is not guaranteed to exist or to be controlled by the same owner.
+   */
+  async isContract(address: string): Promise<boolean> {
+    const code = await this.rpc("eth_getCode", [address, "latest"]);
+    return code !== "0x" && code !== "";
   }
 
   /** Registry v1 fallback: current FNS owner of `label.agt` (Freename id scheme). */

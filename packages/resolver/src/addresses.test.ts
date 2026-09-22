@@ -20,12 +20,13 @@ const SEL = {
 };
 const abiBytes = (hex: string) => { const h = hex.replace(/^0x/, ""); return "0x" + encUint(32n) + encUint(BigInt(h.length / 2)) + h.padEnd(Math.ceil(h.length / 64) * 64, "0"); };
 
-type Chain = { active: boolean; addr: string | null; wallet: string | null; coin?: string | null; resolverReverts?: boolean; registryReverts?: boolean };
-type Call = { jsonrpc: string; id: number; method: string; params: [{ to: string; data: string }, string] };
+type Chain = { active: boolean; addr: string | null; wallet: string | null; coin?: string | null; resolverReverts?: boolean; registryReverts?: boolean; contracts?: string[] };
+type Call = { jsonrpc: string; id: number; method: string; params: [{ to: string; data: string } | string, string] };
 
-/** Answer one eth_call against a fake registry + resolver. */
+/** Answer one eth_call (or eth_getCode) against a fake registry + resolver. */
 function answer(chain: Chain, c: Call): { id: number; result?: string; error?: { code: number; message: string } } {
-  const { to, data } = c.params[0];
+  if (c.method === "eth_getCode") return { id: c.id, result: chain.contracts?.map((a) => a.toLowerCase()).includes(String(c.params[0]).toLowerCase()) ? "0x6080604052" : "0x" };
+  const { to, data } = c.params[0] as { to: string; data: string };
   const sel = data.slice(0, 10);
   const zero = "0x" + encUint(0n);
   if (to.toLowerCase() === REGISTRY.toLowerCase()) {
@@ -116,12 +117,16 @@ test("resolveAddresses: coinType adds one call to the second batch and decodes t
   } finally { m2.restore(); }
 });
 
-test("resolveAddresses: transport failures fail over to the next endpoint; every endpoint down is one error", async () => {
+test("resolveAddresses: transport failures fail over to the next endpoint (sticky within the instance); every endpoint down is one error", async () => {
   const m = mockRpc({ active: true, addr: ADDR, wallet: ADDR }, { "a.example": "network", "b.example": "http500", "c.example": "ok" });
   try {
-    const r = await make(["https://a.example", "https://b.example", "https://c.example"]).resolveAddresses("launchpad.agt");
+    const agt = make(["https://a.example", "https://b.example", "https://c.example"]);
+    const r = await agt.resolveAddresses("launchpad.agt");
     assert.equal(r.addr, ADDR);
-    assert.deepEqual(m.seen.map((s) => s.host), ["a.example", "b.example", "c.example", "a.example", "b.example", "c.example"]);
+    // first round trip walks a → b → c; the second goes straight to c (failed endpoints rotated to the back)
+    assert.deepEqual(m.seen.map((s) => s.host), ["a.example", "b.example", "c.example", "c.example"]);
+    assert.deepEqual(agt.cfg.rpcUrls, ["https://c.example", "https://a.example", "https://b.example"]);
+    assert.equal(agt.cfg.rpcUrl, "https://a.example");
   } finally { m.restore(); }
   const m2 = mockRpc({ active: true, addr: ADDR, wallet: ADDR }, {});
   try {
@@ -152,6 +157,15 @@ test("resolveAddresses: a registry that errors on expiryOf/isActive throws inste
   try {
     await assert.rejects(make().resolveAddresses("launchpad.agt"), /registry 0x5B93.* did not answer for launchpad\.agt/);
     assert.equal(m.seen.length, 1, "an eth_call error is an answer: no failover to b.example");
+  } finally { m.restore(); }
+});
+
+test("isContract: eth_getCode distinguishes a contract account from a key-controlled one", async () => {
+  const m = mockRpc({ active: true, addr: ADDR, wallet: ADDR, contracts: [WALLET] }, { "a.example": "ok" });
+  try {
+    assert.equal(await make().isContract(WALLET), true);
+    assert.equal(await make().isContract(ADDR), false);
+    assert.deepEqual(m.seen, [{ host: "a.example", batch: 0 }, { host: "a.example", batch: 0 }]);
   } finally { m.restore(); }
 });
 
