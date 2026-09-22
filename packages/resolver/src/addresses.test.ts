@@ -176,7 +176,7 @@ test("accountKind / isContract: eth_getCode tells a contract from a key-controll
     assert.equal(await make().isContract(DELEGATED), false);
     m.seen.length = 0;
     assert.equal(await make().isContract(ADDR), false);
-    assert.deepEqual(m.seen, [{ host: "a.example", batch: 0 }, { host: "a.example", batch: 0 }]);
+    assert.deepEqual(m.seen, [{ host: "a.example", batch: 0 }], "one eth_getCode, not a batch");
   } finally { m.restore(); }
 });
 
