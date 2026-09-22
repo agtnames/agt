@@ -1,5 +1,5 @@
 {
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Type name.agt in the send field and pay the name's on-chain address. Resolves AGT Registry records on Polygon.",
   "proposedName": "AGT Names",
   "repository": {
@@ -8,7 +8,7 @@
     "directory": "packages/snap"
   },
   "source": {
-    "shasum": "bEymd8Q6buiRirce5VX0roahf+5zGAQxTvPCPsQEVBQ=",
+    "shasum": "F5GDSB9E/Tx60P0J4LopDWHg0SGUpmfcKpJUQpdMNMc=",
     "location": {
       "npm": {
         "filePath": "dist/bundle.js",
