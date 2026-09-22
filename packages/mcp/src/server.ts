@@ -35,11 +35,14 @@ const MISCONFIG_RE = /is required|is not deployed|unknown chain|not allow-listed
 
 /** Map anything thrown inside a tool to a stable code. Structural checks first; message sniffing last. */
 export function classifyError(e: unknown): { code: ErrorCode; message: string } {
-  const err = e as { name?: string; message?: string; code?: string; cause?: { code?: string; name?: string } } | undefined;
+  const err = e as { name?: string; message?: string; code?: string; cause?: { code?: string; name?: string; cause?: { code?: string; name?: string } } } | undefined;
   const message = clean(typeof err?.message === "string" ? err.message : String(e), 512);
   if (e instanceof McpToolError) return { code: e.code, message };
+  // @agtnames/resolver ≥ 1.4.1 wraps "every endpoint failed" in RpcUnavailableError (cause = the last transport error).
+  // A timeout on the last endpoint is still an outage from the caller's point of view, so it maps here, not to `timeout`.
+  if (err?.name === "RpcUnavailableError" || err?.code === "RPC_UNAVAILABLE") return { code: "rpc_unavailable", message };
   if (err?.name === "AbortError" || err?.name === "TimeoutError" || err?.cause?.name === "AbortError") return { code: "timeout", message: message || "request timed out" };
-  const causeCode = err?.cause?.code ?? err?.code;
+  const causeCode = err?.cause?.cause?.code ?? err?.cause?.code ?? err?.code;
   if (causeCode && (NET_CODES.has(causeCode) || causeCode.startsWith("CERT_") || causeCode.startsWith("ERR_TLS") || causeCode.startsWith("UNABLE_TO"))) return { code: "rpc_unavailable", message };
   if (e instanceof TypeError && /fetch failed/i.test(message)) return { code: "rpc_unavailable", message };
   if (e instanceof SyntaxError) return { code: "rpc_unavailable", message: "RPC returned a non-JSON response" };
