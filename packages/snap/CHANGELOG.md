@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 — 2026-09-22
+
+- Icon rewritten as a single-line SVG (no title element or comment) after MetaMask Flask rejected the 0.1.1 icon with "Snap icon must be a valid SVG". No functional change.
+
 ## 0.1.1 — 2026-09-22
 
 - Icon in the manifest (images/icon.svg, the agt mark). No functional change; the bundle is the same as 0.1.0.
