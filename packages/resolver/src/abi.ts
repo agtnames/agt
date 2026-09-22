@@ -35,6 +35,27 @@ export function decString(hex: string): string {
   const len = Number(BigInt("0x" + h.slice(off, off + 64))) * 2;
   return new TextDecoder().decode(hexToBytes(h.slice(off + 64, off + 64 + len)));
 }
+/** Decode an ABI-encoded dynamic `bytes` return value to 0x-hex; "" when empty (`addr(node, coinType)` returns bytes). */
+export function decBytes(hex: string): string {
+  const h = strip(hex);
+  if (h.length < 128) return "";
+  const off = Number(BigInt("0x" + h.slice(0, 64))) * 2;
+  const len = Number(BigInt("0x" + h.slice(off, off + 64))) * 2;
+  return len ? "0x" + h.slice(off + 64, off + 64 + len) : "";
+}
+
+/** ENSIP-11 coin type for an EVM chain: 60 on Ethereum mainnet, `0x80000000 | chainId` everywhere else. */
+export const coinTypeForChain = (chainId: number): bigint => (chainId === 1 ? 60n : 0x80000000n | BigInt(chainId));
+
+/** EIP-55 mixed-case checksum of a 20-byte address (what wallets display). */
+export function checksumAddress(address: string): string {
+  const a = strip(address).toLowerCase();
+  if (!/^[0-9a-f]{40}$/.test(a)) throw new Error(`not a 20-byte address: ${address}`);
+  const h = strip(keccakHex(a));
+  let out = "0x";
+  for (let i = 0; i < 40; i++) out += parseInt(h[i], 16) >= 8 ? a[i].toUpperCase() : a[i];
+  return out;
+}
 
 /** ENS namehash. `namehash("exampleagent.agt")` == AGTRegistry.nodeOf("exampleagent"). */
 export function namehash(name: string): string {

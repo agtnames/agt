@@ -10,7 +10,7 @@
  *   1. Registry v2 (launch: registry.resolverOf → AGTResolver records; MVP: records on the registry itself)
  *   2. Legacy fallbacks (opt-in): FNS.ownerOf on Polygon (Registry v1 ownership), DNS TXT over DoH (Manifest v1/v2)
  */
-import { decAddress, decBool, decString, decUint, encString, encUint, labelOf, namehash, normalizeName, selector, tokenIdOf, keccakHex, pad32 } from "./abi.js";
+import { decAddress, decBool, decBytes, decString, decUint, encString, encUint, labelOf, namehash, normalizeName, selector, tokenIdOf, keccakHex, pad32 } from "./abi.js";
 import { CHAINS, chainByName, type ChainConfig } from "./chains.js";
 import { cidFromUri, verifyCid, type CidCheck } from "./cid.js";
 import { dnsTxt, inlineV1ToManifest } from "./dns.js";
@@ -27,6 +27,8 @@ export interface ResolverOptions {
   /** Named chain from CHAINS (fills rpcUrl/registry/fns defaults). */
   chain?: string;
   rpcUrl?: string;
+  /** Ordered JSON-RPC endpoints tried until one answers (transport failures only; a revert never fails over). Overrides `rpcUrl`. */
+  rpcUrls?: readonly string[];
   registry?: string;
   /** Freename FNS address for the legacy ownership fallback. */
   fns?: string | null;
@@ -84,6 +86,25 @@ export function manifestStatusOf(r: { manifest: unknown | null; verified: boolea
   return r.verified ? "verified" : "unverified";
 }
 
+/** What `resolveAddresses` returns: the payable records of a name, nothing else. */
+export interface AddressRecord {
+  name: string;
+  label: string;
+  tokenId: string;
+  node: string;
+  registered: boolean;
+  active: boolean;
+  resolver: string | null;
+  /** `addr(node)`: the name's primary EVM address (ENS semantics). null when unset or the name is inactive. */
+  addr: string | null;
+  /** `agentWallet(node)`: the wallet the agent sends and receives payments with. null when unset or inactive. */
+  wallet: string | null;
+  /** Present when a `coinType` was requested (decimal string). */
+  coinType?: string;
+  /** `addr(node, coinType)` as 0x-hex bytes (20 bytes for EVM coin types); null when unset. */
+  coinTypeAddr?: string | null;
+}
+
 export interface AgentResolution extends NameRecord {
   manifest: AgtManifest | null;
   manifestSource: "onchain" | "dns" | "dns-inline-v1" | null;
@@ -110,6 +131,7 @@ const REG = {
 };
 const RES = {
   addr: selector("addr(bytes32)"),
+  addrCoin: selector("addr(bytes32,uint256)"),
   text: selector("text(bytes32,string)"),
   agentManifest: selector("agentManifest(bytes32)"),
   agentEndpoint: selector("agentEndpoint(bytes32,string)"),
@@ -117,33 +139,72 @@ const RES = {
 };
 const ENDPOINT_PROTOCOLS = ["mcp", "a2a", "http", "ws"];
 const ZERO40 = /^0x0{40}$/;
+const nonZeroAddress = (hex: string | null): string | null => {
+  if (!hex || hex.length < 66) return null;
+  const a = decAddress(hex);
+  return ZERO40.test(a) ? null : a;
+};
+
+type RpcItem = { id?: number; result?: string; error?: { message?: string } };
 
 export class AgtResolver {
-  readonly cfg: Required<Pick<ResolverOptions, "rpcUrl" | "registry">> & ResolverOptions & { chainCfg: ChainConfig | null };
+  readonly cfg: Required<Pick<ResolverOptions, "rpcUrl" | "registry">> & ResolverOptions & { rpcUrls: string[]; chainCfg: ChainConfig | null };
 
   constructor(opts: ResolverOptions) {
     const chainCfg = opts.chain ? chainByName(opts.chain) : null;
-    const rpcUrl = opts.rpcUrl ?? chainCfg?.rpcUrl;
+    // Precedence: explicit list > explicit single URL > the chain's list > the chain's single URL.
+    const rpcUrls = opts.rpcUrls?.length ? [...opts.rpcUrls] : opts.rpcUrl ? [opts.rpcUrl] : chainCfg?.rpcUrls?.length ? [...chainCfg.rpcUrls] : chainCfg?.rpcUrl ? [chainCfg.rpcUrl] : [];
+    const rpcUrl = rpcUrls[0];
     const registry = opts.registry ?? chainCfg?.registry ?? undefined;
     if (!rpcUrl) throw new Error("rpcUrl (or a known chain) is required");
     if (!registry) throw new Error(chainCfg ? `AGT Registry v2 is not deployed on ${chainCfg.name} yet — pass { registry }` : "registry is required");
-    this.cfg = { ...opts, rpcUrl, registry, chainCfg, fns: opts.fns ?? chainCfg?.fns ?? null };
+    this.cfg = { ...opts, rpcUrl, rpcUrls, registry, chainCfg, fns: opts.fns ?? chainCfg?.fns ?? null };
   }
 
   // ------------------------------------------------------------------ rpc
 
+  /** POST one JSON-RPC body (single or batch) to the first endpoint that answers. Transport failures (network, timeout,
+   *  non-2xx, non-JSON) move to the next endpoint; a JSON-RPC error is an answer and is returned to the caller. */
+  private async post(body: unknown): Promise<unknown> {
+    let last: unknown;
+    const urls = [...this.cfg.rpcUrls];
+    for (let i = 0; i < urls.length; i++) {
+      const c = new AbortController();
+      const t = setTimeout(() => c.abort(), this.cfg.timeoutMs ?? 15_000);
+      try {
+        const r = await fetch(urls[i], { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: c.signal });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const j = await r.json();
+        // Sticky failover: endpoints that just failed go to the back so the next round trip does not pay for them again
+        // (a wallet lookup has a fixed time budget). cfg.rpcUrl keeps naming the first configured endpoint.
+        if (i > 0) this.cfg.rpcUrls.push(...this.cfg.rpcUrls.splice(0, i));
+        return j;
+      } catch (e) {
+        last = e;
+      } finally { clearTimeout(t); }
+    }
+    throw new Error(`rpc failed on ${this.cfg.rpcUrls.length} endpoint(s): ${(last as Error)?.message ?? String(last)}`);
+  }
+
   private async rpc(method: string, params: unknown[]): Promise<string> {
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), this.cfg.timeoutMs ?? 15_000);
-    try {
-      const r = await fetch(this.cfg.rpcUrl, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: c.signal });
-      const j = (await r.json()) as { result?: string; error?: { message: string } };
-      if (j.error) throw new Error(j.error.message);
-      return j.result ?? "0x";
-    } finally { clearTimeout(t); }
+    const j = (await this.post({ jsonrpc: "2.0", id: 1, method, params })) as RpcItem;
+    if (j.error) throw new Error(j.error.message ?? "rpc error");
+    return j.result ?? "0x";
   }
   private call(to: string, data: string) { return this.rpc("eth_call", [{ to, data }, "latest"]); }
   private async tryCall(to: string, data: string): Promise<string | null> { try { return await this.call(to, data); } catch { return null; } }
+
+  /** Several eth_calls in one round trip. A reverting item yields null (like tryCall). Endpoints that answer a batch
+   *  with a single object fall back to one call per item. */
+  private async batchCall(calls: Array<{ to: string; data: string }>): Promise<Array<string | null>> {
+    if (calls.length === 0) return [];
+    const body = calls.map((c, i) => ({ jsonrpc: "2.0", id: i + 1, method: "eth_call", params: [{ to: c.to, data: c.data }, "latest"] }));
+    const j = await this.post(body);
+    if (!Array.isArray(j)) return Promise.all(calls.map((c) => this.tryCall(c.to, c.data)));
+    const byId = new Map<number, RpcItem>();
+    for (const item of j as RpcItem[]) if (item && typeof item.id === "number") byId.set(item.id, item);
+    return calls.map((_, i) => { const it = byId.get(i + 1); return it && !it.error && typeof it.result === "string" ? it.result : null; });
+  }
 
   // -------------------------------------------------------------- registry
 
@@ -207,6 +268,55 @@ export class AgtResolver {
     };
   }
 
+  /**
+   * Address fast path for wallets (the MetaMask Snap's send flow): two JSON-RPC round trips — registry state, then the
+   * resolver's `addr` / `agentWallet` (and `addr(node, coinType)` when asked) — and no manifest fetch. An inactive
+   * name returns null addresses: the resolver's live gate answers zero for lapsed names and zero maps to null here.
+   */
+  async resolveAddresses(input: string, opts: { coinType?: bigint | number } = {}): Promise<AddressRecord> {
+    const name = normalizeName(input);
+    const label = labelOf(name);
+    const id = tokenIdOf(name);
+    const idHex = encUint(id);
+    const node = namehash(name);
+    const reg = this.cfg.registry;
+    const coinType = opts.coinType === undefined ? null : BigInt(opts.coinType);
+
+    const [expiryHex, activeHex, resolverHex] = await this.batchCall([
+      { to: reg, data: REG.expiryOf + idHex },
+      { to: reg, data: REG.isActive + idHex },
+      { to: reg, data: REG.resolverOf + idHex }, // MVP registry has no resolverOf → null
+    ]);
+    // A registry that does not answer expiryOf/isActive is a failure, not an unregistered name: a wallet must be able
+    // to tell "no such name" from "could not read", or an RPC hiccup silently drops the payee.
+    if (expiryHex === null || activeHex === null) throw new Error(`registry ${reg} did not answer for ${name} (eth_call error)`);
+    const expiry = decUint(expiryHex);
+    const active = decBool(activeHex);
+    const resolver = nonZeroAddress(resolverHex);
+
+    const out: AddressRecord = { name, label, tokenId: id.toString(), node, registered: expiry !== 0n, active, resolver, addr: null, wallet: null };
+    if (coinType !== null) { out.coinType = coinType.toString(); out.coinTypeAddr = null; }
+    if (!active) return out;
+
+    if (resolver) {
+      const nodeHex = pad32(node);
+      const calls = [{ to: resolver, data: RES.addr + nodeHex }, { to: resolver, data: RES.agentWallet + nodeHex }];
+      if (coinType !== null) calls.push({ to: resolver, data: RES.addrCoin + nodeHex + encUint(coinType) });
+      const [addrHex, walletHex, coinHex] = await this.batchCall(calls);
+      out.addr = nonZeroAddress(addrHex);
+      out.wallet = nonZeroAddress(walletHex);
+      if (coinType !== null) {
+        const b = coinHex ? decBytes(coinHex) : "";
+        out.coinTypeAddr = b && !/^0x0*$/.test(b) ? b : null;
+      }
+    } else if (resolverHex === null) {
+      // MVP registry: the address record lives on the registry itself
+      const [addrHex] = await this.batchCall([{ to: reg, data: REG.addrOf + idHex }]);
+      out.addr = nonZeroAddress(addrHex);
+    }
+    return out;
+  }
+
   /** Read a text record (launch resolver `text(node,key)`; MVP registry `text(id,key)`). */
   async text(input: string, key: string): Promise<string> {
     const rec = await this.resolve(input);
@@ -218,6 +328,16 @@ export class AgtResolver {
 
   async available(input: string): Promise<boolean> {
     return decBool(await this.call(this.cfg.registry, REG.available + encUint(tokenIdOf(normalizeName(input)))));
+  }
+
+  /**
+   * `eth_getCode(address)` is non-empty: a contract account (Safe, ERC-4337 account, EIP-7702-delegated EOA), not a
+   * plain key-controlled account. Wallet surfaces use it before reusing a Polygon address on another chain, where a
+   * contract account is not guaranteed to exist or to be controlled by the same owner.
+   */
+  async isContract(address: string): Promise<boolean> {
+    const code = await this.rpc("eth_getCode", [address, "latest"]);
+    return code !== "0x" && code !== "";
   }
 
   /** Registry v1 fallback: current FNS owner of `label.agt` (Freename id scheme). */

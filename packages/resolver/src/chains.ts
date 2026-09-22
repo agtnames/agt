@@ -8,6 +8,8 @@ export interface ChainConfig {
   chainId: number;
   name: string;
   rpcUrl: string;
+  /** Ordered public JSON-RPC endpoints tried until one answers (rpcUrl first). Wallet surfaces rely on the fallback. */
+  rpcUrls?: readonly string[];
   /** AGTRegistryUpgradeable proxy (launch) or AGTRegistry (MVP). null = not deployed on this chain. */
   registry: string | null;
   /** AGTResolver deployed with the registry (also discoverable per name via registry.resolverOf). */
@@ -25,6 +27,8 @@ export const CHAINS: Record<string, ChainConfig> = {
     chainId: 137,
     name: "polygon",
     rpcUrl: "https://polygon-bor-rpc.publicnode.com",
+    // All three answer batched eth_call arrays (checked 2026-09-21); polygon-rpc.com is retired (403) and is not listed.
+    rpcUrls: ["https://polygon-bor-rpc.publicnode.com", "https://polygon.drpc.org", "https://1rpc.io/matic"],
     registry: "0x5B9386C47395B0551c814cC03b69cbD20eb0C87A",
     resolver: "0x66Ae037d2A6a770B4772b889b6cA1704504399f2",
     migrationClaim: "0x4276d03AcbcA433D257FBd90c53F090F4B16d38E",

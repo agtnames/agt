@@ -160,6 +160,7 @@ async function fetchBytes(url: string, timeoutMs: number, max: number): Promise<
 }
 
 const hostOf = (url: string): string => { try { return new URL(url).host; } catch { return url; } };
+const base64ToBytes = (b64: string): Uint8Array => Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/").replace(/\s+/g, "")), (c) => c.charCodeAt(0));
 
 /**
  * Fetch the raw bytes of a manifest URI: ipfs:// (via the gateway list, first success wins), https://, or data:
@@ -174,7 +175,8 @@ export async function fetchManifestBytes(uri: string, opts: FetchManifestOptions
     if (comma < 0) throw new Error("malformed data: URI");
     const meta = uri.slice(5, comma);
     const payload = uri.slice(comma + 1);
-    const bytes = /;base64/i.test(meta) ? new Uint8Array(Buffer.from(payload, "base64")) : new TextEncoder().encode(decodeURIComponent(payload));
+    // atob, not Buffer: the `.` export must run without Node globals (browsers, the MetaMask Snap sandbox).
+    const bytes = /;base64/i.test(meta) ? base64ToBytes(payload) : new TextEncoder().encode(decodeURIComponent(payload));
     if (bytes.length > max) throw new Error(`manifest exceeds ${max} bytes`);
     return bytes;
   }
