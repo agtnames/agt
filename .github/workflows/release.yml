@@ -1,17 +1,19 @@
 name: release
 
-# Publishes the three npm packages and re-lists the MCP server (#362, epic #359).
+# Publishes the four npm packages and re-lists the MCP server (#362, epic #359).
 #
-#   tag push resolver-v* / countersign-v* / mcp-v*   or   Actions → release → Run workflow (dry_run on by default)
+#   tag push resolver-v* / countersign-v* / mcp-v* / snap-v*   or   Actions → release → Run workflow (dry_run on by default)
 #
-# Every run walks resolver → countersign → mcp and publishes each package whose exact package.json version is not
+# Every run walks resolver → countersign → mcp → snap and publishes each package whose exact package.json version is not
 # on npm yet (a tag only triggers; the versions in the tree decide what ships). Publishing uses npm trusted
 # publishing (OIDC, provenance attestation, no token): the owner configures the trusted publisher once per package
 # on npmjs.com (repository agtnames/agt, workflow release.yml). The mcp package goes through
 # scripts/publish-mcp.mjs, which flips file: dependencies to registry ranges and enforces the version gates on
 # server.json / smithery.yaml / gemini-extension.json. Then mcp-publisher re-lists com.agtnames/agt in the official
 # MCP registry (DNS-verified namespace: apex TXT record on agtnames.com + the MCP_DNS_PRIVATE_KEY secret), and Smithery is re-published when SMITHERY_TOKEN and SMITHERY_TARGET_URL exist.
-# The job summary lists what is left to do by hand (plugin pin, README "Listed in", GitHub topics).
+# The snap package (MetaMask Snap, D-028) is built with mm-snap and published only if the committed snap.manifest.json
+# shasum matches the fresh bundle; every new version must then be re-submitted to the MetaMask Snaps Directory by hand.
+# The job summary lists what is left to do by hand (plugin pin, README "Listed in", GitHub topics, Snaps Directory).
 
 on:
   push:
@@ -19,6 +21,7 @@ on:
       - "resolver-v*"
       - "countersign-v*"
       - "mcp-v*"
+      - "snap-v*"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -26,7 +29,7 @@ on:
         type: boolean
         default: true
       package:
-        description: "Limit to one package (resolver | countersign | mcp); empty = every package whose version is new"
+        description: "Limit to one package (resolver | countersign | mcp | snap); empty = every package whose version is new"
         type: string
         default: ""
 
@@ -64,7 +67,7 @@ jobs:
         id: plan
         run: |
           set -e
-          for p in resolver countersign mcp; do
+          for p in resolver countersign mcp snap; do
             NAME=$(node -p "require('./packages/$p/package.json').name")
             VER=$(node -p "require('./packages/$p/package.json').version")
             if [ -n "$ONLY" ] && [ "$ONLY" != "$p" ]; then echo "$p: skipped (package input = $ONLY)"; echo "${p}=skip" >> "$GITHUB_OUTPUT"; continue; fi
@@ -100,6 +103,17 @@ jobs:
           (cd packages/countersign && npm ci && npm run build)
           (cd packages/mcp && npm ci)
           if [ "$DRY_RUN" = "true" ]; then node scripts/publish-mcp.mjs --dry-run; else node scripts/publish-mcp.mjs; fi
+
+      - name: Publish @agtnames/snap (MetaMask Snap)
+        if: ${{ steps.plan.outputs.snap == 'publish' }}
+        working-directory: packages/snap
+        run: |
+          # Depends on @agtnames/resolver from the registry (a registry range, never file:; prepublishOnly re-checks).
+          # mm-snap manifest fails when the committed shasum does not match the fresh bundle, so a stale manifest never ships.
+          npm ci
+          npm run build
+          npx mm-snap manifest
+          if [ "$DRY_RUN" = "true" ]; then npm publish --dry-run --access public; else npm publish --access public; fi
 
       - name: Wait for npm to serve the new mcp tarball
         if: ${{ steps.plan.outputs.mcp == 'publish' && env.DRY_RUN != 'true' }}
@@ -150,7 +164,13 @@ jobs:
             echo "| @agtnames/resolver | ${{ steps.plan.outputs.resolver_version }} | ${{ steps.plan.outputs.resolver }} |"
             echo "| @agtnames/countersign | ${{ steps.plan.outputs.countersign_version }} | ${{ steps.plan.outputs.countersign }} |"
             echo "| @agtnames/mcp | ${{ steps.plan.outputs.mcp_version }} | ${{ steps.plan.outputs.mcp }} |"
+            echo "| @agtnames/snap | ${{ steps.plan.outputs.snap_version }} | ${{ steps.plan.outputs.snap }} |"
             echo
+            if [ "${{ steps.plan.outputs.snap }}" = "publish" ] && [ "$DRY_RUN" != "true" ]; then
+              echo "### By hand after a real snap publish"
+              echo "- re-submit \`@agtnames/snap@${{ steps.plan.outputs.snap_version }}\` to the MetaMask Snaps Directory (update form; users cannot install a version that is not allowlisted)"
+              echo
+            fi
             echo "### By hand after a real mcp publish"
             echo "- pin \`@agtnames/mcp@${{ steps.plan.outputs.mcp_version }}\` in agtnames/agt-plugins \`.mcp.json\` and tag \`v${{ steps.plan.outputs.mcp_version }}\`"
             echo "- check registry.modelcontextprotocol.io/v0.1/servers?search=agt shows the new version; paste listing URLs into packages/mcp/README.md \"Listed in\""

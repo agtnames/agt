@@ -7,6 +7,7 @@
 | [`packages/resolver`](packages/resolver) | `@agtnames/resolver`: resolve, verify and read manifests; A2A agent card and ERC-8004 export helpers; `agt-resolve` CLI | `npm i @agtnames/resolver` |
 | [`packages/mcp`](packages/mcp) | `@agtnames/mcp`: MCP server (stdio) with five read-only tools; the hosted Streamable-HTTP endpoint is `https://agtnames.com/api/mcp` | `npx -y @agtnames/mcp` · `claude mcp add --transport http agt https://agtnames.com/api/mcp` |
 | [`packages/countersign`](packages/countersign) | `@agtnames/countersign`: scoped session grants for record writes (EIP-7702 + Delegation Framework caveats) | `npm i @agtnames/countersign` |
+| [`packages/snap`](packages/snap) | `@agtnames/snap`: MetaMask Snap that resolves `name.agt` in the send field to the name's on-chain address (Polygon and the major EVM chains) | MetaMask Flask until allowlisted: `wallet_requestSnaps` with `npm:@agtnames/snap` |
 | [`skills/agt-names`](skills/agt-names) | Agent skill teaching when and how to use the tools and the public API | `npx skills add agtnames/agt` |
 | [`spec/`](spec) | The `.agt` manifest specification (v3 draft, v1 frozen); rendered at [agtnames.com/spec](https://agtnames.com/spec) | |
 | [`gemini-extension.json`](gemini-extension.json) | Gemini CLI extension bundling the MCP server | `gemini extensions install https://github.com/agtnames/agt` |
@@ -19,9 +20,9 @@ The MCP server is listed in the official MCP registry as `com.agtnames/agt` (`pa
 
 ## Development
 
-Each package is its own npm project: `cd packages/<name> && npm ci && npm run build && npm test`. `packages/mcp` links its siblings with `file:` dependencies, so build `resolver` and `countersign` first. `.github/workflows/ci.yml` runs the same steps plus `node scripts/check-skills.mjs`.
+Each package is its own npm project: `cd packages/<name> && npm ci && npm run build && npm test`. `packages/mcp` links its siblings with `file:` dependencies, so build `resolver` and `countersign` first. `packages/snap` is bundled by `mm-snap` (its `snap.manifest.json` carries the bundle shasum; `npm run manifest:check` must pass before a commit) and tested with `@metamask/snaps-jest`. `.github/workflows/ci.yml` runs the same steps plus `node scripts/check-skills.mjs`.
 
-Releases: tag `resolver-v*`, `countersign-v*` or `mcp-v*` (or run the `release` workflow by hand with `dry_run`). The workflow publishes every package whose version is not on npm yet through npm trusted publishing with provenance, then re-lists the MCP server with `mcp-publisher` (DNS-verified namespace). See the header of `.github/workflows/release.yml`.
+Releases: tag `resolver-v*`, `countersign-v*`, `mcp-v*` or `snap-v*` (or run the `release` workflow by hand with `dry_run`). The workflow publishes every package whose version is not on npm yet through npm trusted publishing with provenance, then re-lists the MCP server with `mcp-publisher` (DNS-verified namespace). A new Snap version must also be re-submitted to the MetaMask Snaps Directory by hand. See the header of `.github/workflows/release.yml`.
 
 ## Security and contributing
 
