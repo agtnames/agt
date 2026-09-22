@@ -58,6 +58,6 @@ startCommand:
       set('AGT_RATE_PER_MIN', config.ratePerMin);
       set('AGT_SESSION_PASSPHRASE', config.sessionPassphrase);
       set('AGT_SESSION_DIR', config.sessionDir);
-      return { command: 'npx', args: ['-y', '@agtnames/mcp@1.5.1'], env };
+      return { command: 'npx', args: ['-y', '@agtnames/mcp@1.5.2'], env };
     }
   exampleConfig: {}
