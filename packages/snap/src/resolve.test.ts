@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 import { describe, expect, it } from "@jest/globals";
-import { HOME_CHAIN, PROTOCOL, PROTOCOL_WALLET, SUPPORTED_CHAINS, chainNumber, entriesFrom, isSupportedChain, lookupDomain, normalizeDomain, type AddressRecords, type AddressSource } from "./resolve";
+import { HOME_CHAIN, PROTOCOL, PROTOCOL_OWNER, SUPPORTED_CHAINS, chainNumber, entriesFrom, isSupportedChain, lookupDomain, normalizeDomain, type AddressRecords, type AddressSource } from "./resolve";
 import manifest from "../snap.manifest.json";
 import pkg from "../package.json";
 
@@ -50,37 +50,36 @@ describe("chains", () => {
   });
 });
 
-describe("entriesFrom (D-028 §3, probe-refined)", () => {
-  it("addr only when wallet equals addr (the common case today)", () => {
+describe("entriesFrom (D-028 v2)", () => {
+  it("one entry when the payment wallet equals addr (the common case today)", () => {
     expect(entriesFrom("launchpad.agt", HOME_CHAIN, rec({ addr: ADDR, wallet: ADDR }))).toEqual([
       { resolvedAddress: ADDR_CS, protocol: PROTOCOL, domainName: "launchpad.agt" },
     ]);
   });
-  it("on Polygon: addr first, agent wallet second when they differ", () => {
+  it("on Polygon: the typed payment wallet leads, the owner account follows when different", () => {
     expect(entriesFrom("x.agt", HOME_CHAIN, rec({ addr: ADDR, wallet: WALLET }))).toEqual([
-      { resolvedAddress: ADDR_CS, protocol: PROTOCOL, domainName: "x.agt" },
-      { resolvedAddress: WALLET_CS, protocol: PROTOCOL_WALLET, domainName: "x.agt" },
+      { resolvedAddress: WALLET_CS, protocol: PROTOCOL, domainName: "x.agt" },
+      { resolvedAddress: ADDR_CS, protocol: PROTOCOL_OWNER, domainName: "x.agt" },
     ]);
   });
-  it("on Polygon: wallet alone when addr is unset", () => {
-    expect(entriesFrom("x.agt", HOME_CHAIN, rec({ wallet: WALLET }))).toEqual([
-      { resolvedAddress: WALLET_CS, protocol: PROTOCOL_WALLET, domainName: "x.agt" },
-    ]);
+  it("on Polygon: addr alone (plain label) when no payment wallet is set; wallet alone when addr is unset", () => {
+    expect(entriesFrom("x.agt", HOME_CHAIN, rec({ addr: ADDR }))).toEqual([{ resolvedAddress: ADDR_CS, protocol: PROTOCOL, domainName: "x.agt" }]);
+    expect(entriesFrom("x.agt", HOME_CHAIN, rec({ wallet: WALLET }))).toEqual([{ resolvedAddress: WALLET_CS, protocol: PROTOCOL, domainName: "x.agt" }]);
   });
-  it("off Polygon: the agent wallet is never offered (it is collected as a Polygon payment address)", () => {
-    expect(entriesFrom("x.agt", BASE, rec({ addr: ADDR, wallet: WALLET }))).toEqual([
-      { resolvedAddress: ADDR_CS, protocol: PROTOCOL, domainName: "x.agt" },
-    ]);
+  it("off Polygon: the payment wallet is never offered (it is a Polygon payment address)", () => {
+    expect(entriesFrom("x.agt", BASE, rec({ addr: ADDR, wallet: WALLET }))).toEqual([{ resolvedAddress: ADDR_CS, protocol: PROTOCOL, domainName: "x.agt" }]);
     expect(entriesFrom("x.agt", "eip155:1", rec({ wallet: WALLET }))).toEqual([]);
   });
-  it("a per-chain addr(coinType) record replaces addr on that chain (ENSIP-11)", () => {
+  it("a per-chain addr(coinType) record replaces addr on that chain (ENSIP-11), on Polygon too", () => {
     expect(entriesFrom("x.agt", BASE, rec({ addr: ADDR, wallet: ADDR, coinTypeAddr: BASE_ADDR }))).toEqual([
       { resolvedAddress: BASE_ADDR_CS, protocol: PROTOCOL, domainName: "x.agt" },
     ]);
-    // a non-20-byte coinType record (not an EVM address) is ignored
-    expect(entriesFrom("x.agt", BASE, rec({ addr: ADDR, coinTypeAddr: "0x0102" }))).toEqual([
-      { resolvedAddress: ADDR_CS, protocol: PROTOCOL, domainName: "x.agt" },
+    expect(entriesFrom("x.agt", HOME_CHAIN, rec({ addr: ADDR, wallet: WALLET, coinTypeAddr: BASE_ADDR }))).toEqual([
+      { resolvedAddress: WALLET_CS, protocol: PROTOCOL, domainName: "x.agt" },
+      { resolvedAddress: BASE_ADDR_CS, protocol: PROTOCOL_OWNER, domainName: "x.agt" },
     ]);
+    // a non-20-byte coinType record (not an EVM address) is ignored
+    expect(entriesFrom("x.agt", BASE, rec({ addr: ADDR, coinTypeAddr: "0x0102" }))).toEqual([{ resolvedAddress: ADDR_CS, protocol: PROTOCOL, domainName: "x.agt" }]);
   });
   it("nothing for inactive names or names without records", () => {
     expect(entriesFrom("x.agt", HOME_CHAIN, rec({ active: false, addr: ADDR, wallet: WALLET }))).toEqual([]);

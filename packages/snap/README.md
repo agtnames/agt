@@ -1,6 +1,6 @@
 # @agtnames/snap
 
-A MetaMask Snap that lets a person type `name.agt` in the send field and pay the name's on-chain address. It resolves AGT Registry records on Polygon (`addr`, and the agent's declared payment wallet when it differs) and answers on the major EVM networks.
+A MetaMask Snap that lets a person type `name.agt` in the send field and pay the name's on-chain address. It resolves AGT Registry records on Polygon (the name's declared payment wallet, and its owner account when that differs) and answers on the major EVM networks.
 
 ## Install
 
@@ -17,12 +17,14 @@ Then open MetaMask, start a send on Polygon, Ethereum, Base, Arbitrum, Optimism,
 
 ## What it resolves
 
-| Record on the name | Shown as | When |
+| Network | Entry | Label |
 |---|---|---|
-| `addr` | `AGT Registry` | always, when set |
-| `agentWallet` | `AGT Registry (agent wallet)` | only when set and different from `addr` |
+| Polygon | `agentWallet` (the payment address the owner set) | `AGT Registry` |
+| Polygon | `addr` (the owner account), only when it differs | `AGT Registry (owner account)` |
+| Polygon, no `agentWallet` | `addr` | `AGT Registry` |
+| Ethereum, Base, Arbitrum, Optimism, BNB, Avalanche | `addr(coinType)` for that chain when set (ENSIP-11), else `addr` | `AGT Registry` |
 
-Lapsed, unregistered or record-less names show nothing. Other resolver Snaps may return a legacy record for the same name; look for the AGT Registry label. Reads go straight to Polygon public JSON-RPC endpoints through [`@agtnames/resolver`](../resolver) (two batched round trips, no third-party API). Address → name (reverse lookup) and per-chain `addr(coinType)` overrides are planned for the next version.
+Off Polygon, `addr` is reused only when it is a key-controlled account (empty `eth_getCode` on Polygon): a Safe or smart account is not the same account on another chain, so nothing is offered. The payment wallet is a Polygon address and is never offered elsewhere. Lapsed, unregistered or record-less names show nothing, and so does any read failure: the Snap never guesses. Other resolver Snaps may return a legacy record for the same name; look for the AGT Registry label. Reads go straight to Polygon public JSON-RPC endpoints through [`@agtnames/resolver`](../resolver) (two batched round trips, no third-party API). Address → name (reverse lookup) is planned for the next version.
 
 ## Permissions
 
