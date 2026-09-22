@@ -15,7 +15,7 @@ import { join, relative, resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const TARGETS = ["skills", "spec", "GEMINI.md", "README.md", "CONTRIBUTING.md", "SECURITY.md", "packages/resolver/README.md", "packages/countersign/README.md", "packages/mcp/README.md"];
+const TARGETS = ["skills", "spec", "GEMINI.md", "README.md", "CONTRIBUTING.md", "SECURITY.md", "packages/resolver/README.md", "packages/countersign/README.md", "packages/mcp/README.md", "packages/snap/README.md", "packages/snap/CHANGELOG.md", "packages/snap/snap.manifest.json"];
 // The vendor's name, split so this file does not itself trip the rule.
 const VENDOR = ["Free" + "name", "free" + "name"];
 
