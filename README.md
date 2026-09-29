@@ -18,6 +18,8 @@ Docs: [agtnames.com/docs](https://agtnames.com/docs) · Claude Code and other cl
 
 The MCP server is listed in the official MCP registry as `com.agtnames/agt` (`packages/mcp/server.json`), on Smithery (`packages/mcp/smithery.yaml`) and wherever else `packages/mcp/README.md` "Listed in" records.
 
+[![M8ven Score](https://m8ven.ai/badge/mcp/agtnames-agt-1myhfb?v=3ec005b91e561701afa2c1a2a8b18395)](https://m8ven.ai/mcp/agtnames-agt-1myhfb)
+
 ## Development
 
 Each package is its own npm project: `cd packages/<name> && npm ci && npm run build && npm test`. `packages/mcp` links its siblings with `file:` dependencies, so build `resolver` and `countersign` first. `packages/snap` is bundled by `mm-snap` (its `snap.manifest.json` carries the bundle shasum; `npm run manifest:check` must pass before a commit) and tested with `@metamask/snaps-jest`. `.github/workflows/ci.yml` runs the same steps plus `node scripts/check-skills.mjs`.
