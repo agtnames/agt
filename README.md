@@ -18,7 +18,7 @@ Docs: [agtnames.com/docs](https://agtnames.com/docs) · Claude Code and other cl
 
 The MCP server is listed in the official MCP registry as `com.agtnames/agt` (`packages/mcp/server.json`), on Smithery (`packages/mcp/smithery.yaml`) and wherever else `packages/mcp/README.md` "Listed in" records.
 
-[![M8ven Score](https://m8ven.ai/badge/mcp/agtnames-agt-1myhfb?v=3ec005b91e561701afa2c1a2a8b18395)](https://m8ven.ai/mcp/agtnames-agt-1myhfb)
+[![M8ven Score](https://m8ven.ai/badge/mcp/agtnames-agt-1myhfb?v=6093ceb6bb9d19f09a08812ee2ac8e9d)](https://m8ven.ai/mcp/agtnames-agt-1myhfb)
 
 ## Development
 
