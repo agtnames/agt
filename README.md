@@ -23,9 +23,9 @@ The MCP server is listed in the official MCP registry as `com.agtnames/agt` (`pa
 
 ## Development
 
-Each package is its own npm project: `cd packages/<name> && npm ci && npm run build && npm test`. `packages/mcp` links its siblings with `file:` dependencies, so build `resolver` and `countersign` first. `packages/cli` depends on the published resolver. `packages/snap` is bundled by `mm-snap` (its `snap.manifest.json` carries the bundle shasum; `npm run manifest:check` must pass before a commit) and tested with `@metamask/snaps-jest`. `.github/workflows/ci.yml` runs the same steps plus `node scripts/check-skills.mjs`.
+Each package is its own npm project: `cd packages/<name> && npm ci && npm run build && npm test`. `packages/mcp` links its siblings with `file:` dependencies, so build `resolver` and `countersign` first. `packages/cli` depends on the published resolver (a registry range; its `prepublishOnly` refuses `file:`), so publish a resolver change first. `packages/snap` is bundled by `mm-snap` (its `snap.manifest.json` carries the bundle shasum; `npm run manifest:check` must pass before a commit) and tested with `@metamask/snaps-jest`. `.github/workflows/ci.yml` runs the same steps plus `node scripts/check-skills.mjs`.
 
-Releases: tag `resolver-v*`, `countersign-v*`, `mcp-v*` or `snap-v*` (or run the `release` workflow by hand with `dry_run`). The workflow publishes every package whose version is not on npm yet through npm trusted publishing with provenance, then re-lists the MCP server with `mcp-publisher` (DNS-verified namespace). A new Snap version must also be re-submitted to the MetaMask Snaps Directory by hand. See the header of `.github/workflows/release.yml`.
+Releases: tag `resolver-v*`, `countersign-v*`, `cli-v*`, `mcp-v*` or `snap-v*` (or run the `release` workflow by hand with `dry_run`). The workflow publishes every package whose version is not on npm yet through npm trusted publishing with provenance, then re-lists the MCP server with `mcp-publisher` (DNS-verified namespace). A new Snap version must also be re-submitted to the MetaMask Snaps Directory by hand. See the header of `.github/workflows/release.yml`.
 
 ## Security and contributing
 
