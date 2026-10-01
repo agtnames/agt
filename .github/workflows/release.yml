@@ -4,7 +4,7 @@ name: release
 #
 #   tag push resolver-v* / countersign-v* / mcp-v* / snap-v*   or   Actions → release → Run workflow (dry_run on by default)
 #
-# Every run walks resolver → countersign → mcp → snap and publishes each package whose exact package.json version is not
+# Every run walks resolver → countersign → cli → mcp → snap and publishes each package whose exact package.json version is not
 # on npm yet (a tag only triggers; the versions in the tree decide what ships). Publishing uses npm trusted
 # publishing (OIDC, provenance attestation, no token): the owner configures the trusted publisher once per package
 # on npmjs.com (repository agtnames/agt, workflow release.yml). The mcp package goes through
@@ -20,6 +20,7 @@ on:
     tags:
       - "resolver-v*"
       - "countersign-v*"
+      - "cli-v*"
       - "mcp-v*"
       - "snap-v*"
   workflow_dispatch:
@@ -29,7 +30,7 @@ on:
         type: boolean
         default: true
       package:
-        description: "Limit to one package (resolver | countersign | mcp | snap); empty = every package whose version is new"
+        description: "Limit to one package (resolver | countersign | cli | mcp | snap); empty = every package whose version is new"
         type: string
         default: ""
 
@@ -67,7 +68,7 @@ jobs:
         id: plan
         run: |
           set -e
-          for p in resolver countersign mcp snap; do
+          for p in resolver countersign cli mcp snap; do
             NAME=$(node -p "require('./packages/$p/package.json').name")
             VER=$(node -p "require('./packages/$p/package.json').version")
             if [ -n "$ONLY" ] && [ "$ONLY" != "$p" ]; then echo "$p: skipped (package input = $ONLY)"; echo "${p}=skip" >> "$GITHUB_OUTPUT"; continue; fi
@@ -91,6 +92,14 @@ jobs:
         if: ${{ steps.plan.outputs.countersign == 'publish' }}
         working-directory: packages/countersign
         run: |
+          npm ci
+          if [ "$DRY_RUN" = "true" ]; then npm publish --dry-run --access public; else npm publish --access public; fi
+
+      - name: Publish @agtnames/cli
+        if: ${{ steps.plan.outputs.cli == 'publish' }}
+        working-directory: packages/cli
+        run: |
+          # Depends on @agtnames/resolver from the registry (prepublishOnly refuses a file: dependency).
           npm ci
           if [ "$DRY_RUN" = "true" ]; then npm publish --dry-run --access public; else npm publish --access public; fi
 
@@ -179,6 +188,7 @@ jobs:
             echo "|---|---|---|"
             echo "| @agtnames/resolver | ${{ steps.plan.outputs.resolver_version }} | ${{ steps.plan.outputs.resolver }} |"
             echo "| @agtnames/countersign | ${{ steps.plan.outputs.countersign_version }} | ${{ steps.plan.outputs.countersign }} |"
+            echo "| @agtnames/cli | ${{ steps.plan.outputs.cli_version }} | ${{ steps.plan.outputs.cli }} |"
             echo "| @agtnames/mcp | ${{ steps.plan.outputs.mcp_version }} | ${{ steps.plan.outputs.mcp }} |"
             echo "| @agtnames/snap | ${{ steps.plan.outputs.snap_version }} | ${{ steps.plan.outputs.snap }} |"
             echo

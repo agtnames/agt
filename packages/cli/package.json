@@ -35,10 +35,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "node --test dist/*.test.js",
-    "prepublishOnly": "npm run build && npm test"
+    "prepublishOnly": "node scripts/check-publish-deps.mjs && npm run build && npm test"
   },
   "dependencies": {
-    "@agtnames/resolver": "file:../resolver",
+    "@agtnames/resolver": "^1.5.0",
     "viem": "^2.56.0"
   },
   "devDependencies": {
