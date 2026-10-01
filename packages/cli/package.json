@@ -1,0 +1,66 @@
+{
+  "name": "@agtnames/cli",
+  "version": "0.1.0",
+  "description": "Register a .agt name, publish a signed manifest, set records and verify the result from a terminal. Signs in MetaMask through a local page, or with a key from the environment or an encrypted keyfile.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "agt": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "!dist/*.test.js",
+    "!dist/*.test.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/agtnames/agt.git",
+    "directory": "packages/cli"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test dist/*.test.js",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@agtnames/resolver": "file:../resolver",
+    "viem": "^2.56.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "keywords": [
+    "agt",
+    "agent-identity",
+    "cli",
+    "metamask",
+    "manifest",
+    "agent",
+    "ai-agents",
+    "mcp",
+    "a2a",
+    "polygon",
+    "naming"
+  ],
+  "license": "MIT",
+  "homepage": "https://agtnames.com/docs/guides/command-line",
+  "bugs": {
+    "url": "https://github.com/agtnames/agt/issues"
+  }
+}

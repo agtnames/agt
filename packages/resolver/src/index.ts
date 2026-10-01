@@ -22,6 +22,7 @@ export * from "./chains.js";
 export * from "./cid.js";
 export * from "./dns.js";
 export * from "./a2a.js";
+export * from "./capabilities.js";
 
 export interface ResolverOptions {
   /** Named chain from CHAINS (fills rpcUrl/registry/fns defaults). */
