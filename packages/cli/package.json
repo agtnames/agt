@@ -1,6 +1,6 @@
 {
   "name": "@agtnames/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Register a .agt name, publish a signed manifest, set records and verify the result from a terminal. Signs in MetaMask through a local page, or with a key from the environment or an encrypted keyfile.",
   "type": "module",
   "main": "./dist/index.js",

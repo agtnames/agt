@@ -4,7 +4,8 @@
  */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { request } from "node:http";
+import { createServer, request } from "node:http";
+import type { AddressInfo } from "node:net";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { browserSigner, WalletRejectedError } from "./browser.js";
 import { networkFrom } from "./config.js";
@@ -114,4 +115,35 @@ test("hardening: wrong token, foreign Host, missing Origin and non-JSON posts ar
   assert.equal((await raw(`${url}/result`, { method: "POST", headers: { origin: u.origin, "content-type": "application/json" }, body })).status, 409, "a result for a request that was never dispatched");
 
   await assert.rejects(pending, /timed out/);
+});
+
+test("a reload hands an open request to the new page instead of losing it", async () => {
+  const wallet = privateKeyToAccount(generatePrivateKey());
+  let page: ReturnType<typeof fakePage> | undefined;
+  const signer = await browserSigner({
+    network: net, open: () => {}, onUrl: (u) => {
+      void (async () => {
+        // The first page takes the connect request and is reloaded before it answers.
+        const first = await raw(`${u}/next`);
+        assert.equal(JSON.parse(first.body).method, "connect");
+        assert.equal((await raw(u)).status, 200);
+        page = fakePage(u, async (r) => r.method === "connect" ? { result: wallet.address } : { error: { message: "unexpected" } });
+      })();
+    },
+  });
+  assert.equal(signer.address, wallet.address);
+  await signer.close();
+  await page!.done;
+});
+
+test("--port: the page is served on the given port, and a taken port is reported plainly", async () => {
+  const free = await new Promise<number>((resolve) => { const s = createServer().listen(0, "127.0.0.1", () => { const p = (s.address() as AddressInfo).port; s.close(() => resolve(p)); }); });
+  let url = "";
+  const wallet = privateKeyToAccount(generatePrivateKey());
+  let page: ReturnType<typeof fakePage> | undefined;
+  const signer = await browserSigner({ network: net, port: free, open: () => {}, onUrl: (u) => { url = u; page = fakePage(u, async () => ({ result: wallet.address })); } });
+  assert.equal(new URL(url).port, String(free));
+  await assert.rejects(browserSigner({ network: net, port: free, open: () => {} }), /port \d+ is in use/);
+  await signer.close();
+  await page!.done;
 });
