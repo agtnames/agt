@@ -68,7 +68,10 @@ export async function browserSigner(opts: BrowserSignerOptions): Promise<Signer>
   let origin = "";
 
   const server = createServer((req, res) => handle(req, res).catch(() => { if (!res.headersSent) send(res, 500, "error"); }));
-  await new Promise<void>((resolve, reject) => { server.once("error", reject); server.listen(opts.port ?? 0, "127.0.0.1", () => resolve()); });
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", (e: NodeJS.ErrnoException) => reject(e.code === "EADDRINUSE" ? new Error(`port ${opts.port} is in use (is another agt command still waiting for the wallet?)`) : e));
+    server.listen(opts.port ?? 0, "127.0.0.1", () => resolve());
+  });
   const port = (server.address() as AddressInfo).port;
   origin = `http://127.0.0.1:${port}`;
   const allowedHosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
@@ -112,7 +115,11 @@ export async function browserSigner(opts: BrowserSignerOptions): Promise<Signer>
     if (!m || !tokenOk(m[1])) return send(res, 404, "not found");
     const route = m[2] ?? "";
 
-    if (req.method === "GET" && route === "") return send(res, 200, page(nonce, network), "text/html; charset=utf-8");
+    if (req.method === "GET" && route === "") {
+      // A (re)load replaces the page that held any dispatched request; hand those to the new page instead of losing them.
+      for (const p of queue) p.dispatched = false;
+      return send(res, 200, page(nonce, network), "text/html; charset=utf-8");
+    }
 
     if (req.method === "GET" && route === "/next") {
       waiters.push(res);
@@ -227,7 +234,22 @@ function page(nonce: string, n: Network): string {
 (() => {
   const base = location.pathname;
   const $ = (id) => document.getElementById(id);
-  const eth = window.ethereum;
+  let eth = window.ethereum || null;
+  const announced = [];
+  window.addEventListener("eip6963:announceProvider", (e) => { if (e.detail && e.detail.provider) announced.push(e.detail); });
+  window.addEventListener("ethereum#initialized", () => { eth = eth || window.ethereum || null; }, { once: true });
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+  // Waits for a wallet instead of failing: a wallet that cannot see this page usually needs site access and a reload,
+  // and the terminal keeps the request open across the reload.
+  async function wallet() {
+    for (let i = 0; ; i++) {
+      if (!eth) { const mm = announced.find((d) => /metamask/i.test((d.info && d.info.rdns) || "")) || announced[0]; eth = window.ethereum || (mm && mm.provider) || null; }
+      if (eth) return eth;
+      if (i === 6) setStatus("MetaMask can't see this page yet. Click the MetaMask icon in the browser toolbar and allow it on this site (or add http://127.0.0.1 to its site access), then reload this page. The terminal keeps waiting.", "err");
+      if (i % 4 === 0) window.dispatchEvent(new Event("eip6963:requestProvider"));
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
   const setStatus = (text, cls) => { const s = $("status"); s.textContent = text; s.className = cls || ""; };
   const clear = () => { $("detail").replaceChildren(); $("action").replaceChildren(); };
   const pre = (text) => { const p = document.createElement("pre"); p.textContent = text; return p; };
@@ -236,6 +258,23 @@ function page(nonce: string, n: Network): string {
 
   async function post(body) {
     await fetch(base + "/result", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  }
+  function choice(labels) {
+    return new Promise((resolve) => {
+      $("action").replaceChildren(...labels.map((label, i) => { const b = document.createElement("button"); b.textContent = label; b.style.marginRight = "8px"; b.onclick = () => { for (const x of $("action").children) x.disabled = true; resolve(i); }; return b; }));
+    });
+  }
+  async function attempt(r) {
+    for (;;) {
+      try { return { result: await run(r) }; }
+      catch (e) {
+        const code = e && e.code, message = (e && e.message) || String(e);
+        if (code === 4001) return { error: { code, message } };
+        const hint = r.method === "eth_sendTransaction" ? " If MetaMask's activity shows the transaction was sent, choose Cancel." : "";
+        setStatus(message + hint, "err");
+        if ((await choice(["Try again", "Cancel"])) !== 0) return { error: { code, message } };
+      }
+    }
   }
   function button(label) {
     return new Promise((resolve) => { const b = document.createElement("button"); b.textContent = label; b.onclick = () => { b.disabled = true; resolve(); }; $("action").replaceChildren(b); });
@@ -259,7 +298,8 @@ function page(nonce: string, n: Network): string {
   async function run(r) {
     clear();
     if (r.method === "close") { stopped = true; setStatus(r.description, "ok"); await post({ id: r.id, result: true }); return; }
-    if (!eth) throw Object.assign(new Error("No browser wallet found. Install MetaMask, then reload this page."), { code: -1 });
+    setStatus(r.description);
+    await wallet();
     setStatus(r.description);
     if (r.method === "connect") {
       chain = r.params;
@@ -292,8 +332,12 @@ function page(nonce: string, n: Network): string {
       let r;
       try { const res = await fetch(base + "/next", { cache: "no-store" }); if (res.status === 204) continue; if (!res.ok) throw new Error("terminal returned " + res.status); r = await res.json(); }
       catch (e) { setStatus("Lost the terminal connection. If the command finished, close this tab.", "err"); return; }
-      try { const result = await run(r); if (r.method !== "close") { setStatus("Sent back to the terminal.", "ok"); await post({ id: r.id, result }); } }
-      catch (e) { setStatus((e && e.message) || String(e), "err"); await post({ id: r.id, error: { code: e && e.code, message: (e && e.message) || String(e) } }); }
+      const out = await attempt(r);
+      if (r.method === "close") continue;
+      try {
+        if (out.error) { setStatus(out.error.message, "err"); await post({ id: r.id, error: out.error }); }
+        else { setStatus("Sent back to the terminal.", "ok"); await post({ id: r.id, result: out.result }); }
+      } catch (e) { setStatus("Lost the terminal connection. If the command finished, close this tab.", "err"); return; }
     }
   }
   loop();

@@ -16,6 +16,7 @@
  *   --signer key             key from AGT_OWNER_KEY, or from the variable --key-env names
  *   --keyfile <file>         key from an encrypted keyfile; passphrase from AGT_KEYFILE_PASSPHRASE or a prompt
  *   --no-open                print the wallet page URL instead of opening a browser
+ *   --port <n>               serve the wallet page on this port (AGT_SIGNER_PORT), so one site-access grant covers every run
  *
  * Network: --network polygon|amoy (AGT_NETWORK, default polygon), --rpc URL (AGT_RPC_URL), --site URL (AGT_SITE,
  * default https://agtnames.com; required on amoy). --dry-run on any write signs what needs signing, prints the exact
@@ -67,9 +68,17 @@ async function signerFor(c: Ctx): Promise<Signer> {
   const noOpen = c.args.bools.has("no-open");
   const timeout = f.timeout ? Number(f.timeout) * 60_000 : undefined;
   c.log(`Opening the wallet page${noOpen ? "" : " in your browser"}. Keep it open until the command finishes.`);
-  const s = await browserSigner({ network: c.net, timeoutMs: timeout, open: noOpen ? () => {} : undefined, onUrl: (u) => c.log(`  ${u}`) });
+  const port = signerPort(f.port ?? process.env.AGT_SIGNER_PORT);
+  const s = await browserSigner({ network: c.net, timeoutMs: timeout, port, open: noOpen ? () => {} : undefined, onUrl: (u) => c.log(`  ${u}`) });
   c.log(`Connected: ${s.address}`);
   return s;
+}
+
+function signerPort(v: string | undefined): number | undefined {
+  if (v === undefined || v === "") return undefined;
+  const n = Number(v);
+  if (!Number.isInteger(n) || n < 1024 || n > 65535) throw new UsageError("--port must be a whole number from 1024 to 65535");
+  return n;
 }
 
 async function withSigner<T>(c: Ctx, fn: (s: Signer) => Promise<T>): Promise<T> {

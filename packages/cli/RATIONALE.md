@@ -62,3 +62,12 @@ Choosing protocols and then answering one URL question per protocol was two pass
 - `Enter` in the input saves the row, ticks it, starts reading that endpoint in the background, and moves focus to the next row. `Enter` on an empty input unticks the row. `Esc` on an empty input returns to the list.
 - `Enter` from the list continues with every ticked row, so the fast path is Tab, type, Enter per row, then Enter again.
 - An empty row's suggestion comes from a URL already entered on the same site (`https://host/mcp` suggests `https://host/a2a`), and each saved row shows its live status inline.
+
+### R-9. The wallet page waits for the wallet and survives a reload
+
+In 0.1.0 the page failed the first request as soon as `window.ethereum` was missing, and that error ended the command. The server then shut down, so the reload the message asked for found nothing. A wallet commonly can't see a fresh `127.0.0.1` page: its site access is set to "on click" or to specific sites, and the port changed on every run. A first publish of nine names hit this on every attempt.
+
+- The page looks for the wallet through `window.ethereum`, `ethereum#initialized` and EIP-6963 announcements, and keeps waiting. After about 3 s it says how to give the wallet access and asks for a reload. The terminal's request stays open meanwhile.
+- Loading the page hands every request that was dispatched but not answered to the new page, so a reload never loses one.
+- Only a rejection in the wallet (4001) ends the command. Any other wallet error shows Try again and Cancel on the page. For a transaction, the page says to choose Cancel if the wallet's activity shows it was sent.
+- `--port <n>` (or `AGT_SIGNER_PORT`) keeps the page on one origin, so a site-access grant applies on every run. The default is still a random port, which avoids collisions. A taken port says so plainly.

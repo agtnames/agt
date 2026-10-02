@@ -48,9 +48,11 @@ With `--dry-run`, a write command signs what needs signing, prints the exact doc
 
 | How | Flag | Key source |
 |---|---|---|
-| MetaMask or another browser wallet (default) | none, or `--no-open` to print the page URL | stays in the wallet |
+| MetaMask or another browser wallet (default) | none; `--no-open` prints the page URL, `--port <n>` (or `AGT_SIGNER_PORT`) keeps it on one port so a wallet's site access needs granting once | stays in the wallet |
 | Environment variable | `--signer key`, or `--key-env NAME` | `AGT_OWNER_KEY`, or the variable you name |
 | Encrypted keyfile | `--keyfile owner.json` | passphrase from `AGT_KEYFILE_PASSPHRASE` or a hidden prompt |
+
+The page waits for the wallet and survives a reload: if MetaMask cannot see it, allow MetaMask on the site and reload, and the terminal keeps the request open. Only rejecting a request in the wallet ends the command; any other wallet error can be retried on the page.
 
 A key is never taken from a command-line argument, where it would end up in shell history. `agt keyfile create` reads the key and passphrase at hidden prompts. It uses the same format as `@agtnames/mcp`'s session key: scrypt, then AES-256-GCM, with the address stored in the clear.
 

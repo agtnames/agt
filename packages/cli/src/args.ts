@@ -3,7 +3,7 @@
 export class UsageError extends Error { constructor(m: string) { super(m); this.name = "UsageError"; } }
 
 export const BOOLEAN_FLAGS = ["dry-run", "json", "yes", "no-open", "no-records", "no-endpoints", "skip-live-check", "template", "no-probe", "help", "version"] as const;
-export const VALUE_FLAGS = ["network", "rpc", "site", "signer", "key-env", "keyfile", "years", "to", "host", "out", "mcp", "a2a", "http", "ws", "wallet", "addr", "manifest", "timeout", "shell"] as const;
+export const VALUE_FLAGS = ["network", "rpc", "site", "signer", "key-env", "keyfile", "years", "to", "host", "out", "mcp", "a2a", "http", "ws", "wallet", "addr", "manifest", "timeout", "shell", "port"] as const;
 
 export interface Parsed { positionals: string[]; flags: Record<string, string>; bools: Set<string> }
 
